@@ -19,7 +19,7 @@
 
 const char *argv0;
 
-static void mkdatadir(int *);
+static void mkdatadirs(int *);
 static void usage(void);
 
 int
@@ -30,7 +30,7 @@ main(int argc, char *argv[])
 
 	if (argc == 1)
 		usage();
-	mkdatadir(fds);
+	mkdatadirs(fds);
 
 	argc--, argv++;
 	if (streq(argv[0], "add"))
@@ -50,7 +50,7 @@ main(int argc, char *argv[])
 }
 
 void
-mkdatadir(int *fds)
+mkdatadirs(int *fds)
 {
 	int fd;
 	bool home = false;
