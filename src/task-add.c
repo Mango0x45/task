@@ -19,10 +19,10 @@
 
 #define OPENATFLAGS (O_CREAT | O_EXCL | O_WRONLY)
 
-static void  mktaske(int, char *);
-static void  mktaskt(int, char *);
-static void  mktask_from_file(FILE *, int);
-static void  spawneditor(char *);
+static void   mktaske(int, char *);
+static void   mktaskt(int, char *);
+static void   mktask_from_file(FILE *, int);
+static void   spawneditor(char *);
 static size_t mktaskid(int);
 
 void
