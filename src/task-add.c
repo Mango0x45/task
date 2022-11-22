@@ -167,7 +167,7 @@ mktaskid(int fd)
 	struct dirent *ent;
 
 	if ((dp = fdopendir(fd)) == NULL)
-		return (size_t) -1;
+		err(EXIT_FAILURE, "fdopendir");
 	while ((ent = readdir(dp)) != NULL) {
 		if (!streq(ent->d_name, ".") && !streq(ent->d_name, ".."))
 			cnt++;
