@@ -2,9 +2,9 @@
 
 CC      = cc
 CFLAGS  = -Wall -Wextra -Wpedantic -Werror \
-	  -march=native -mtune=native -O3  \
-	  -pipe `./genflags --cflags`      \
-	  -DLIBBSD_NETBSD_VIS
+          -march=native -mtune=native -O3  \
+          -pipe `./genflags --cflags`      \
+          -DLIBBSD_NETBSD_VIS
 LDFLAGS = -flto `./genflags --libs`
 
 prog = task
