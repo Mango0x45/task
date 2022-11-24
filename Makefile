@@ -3,8 +3,8 @@
 CC       = cc
 CFLAGS   = -Wall -Wextra -Wpedantic -Werror      \
            -march=native -mtune=native -O3 -flto \
-           -pipe `./genflags --cflags`
-CPPFLAGS = -DLIBBSD_NETBSD_VIS
+           -pipe
+CPPFLAGS = `./genflags --cflags` -DLIBBSD_NETBSD_VIS
 LDLIBS   = `./genflags --libs`
 
 prog = task
