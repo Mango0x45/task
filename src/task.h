@@ -1,7 +1,7 @@
 #ifndef TASK_H
 #define TASK_H
 
-#include "common.h"
+#include <stddef.h>
 
 #define  DONEDIR "done"
 #define NDONEDIR "notdone"
