@@ -5,7 +5,8 @@ CFLAGS  = -Wall -Wextra -Wpedantic -Werror \
           -march=native -mtune=native -O3  \
           -pipe `./genflags --cflags`      \
           -DLIBBSD_NETBSD_VIS
-LDFLAGS = -flto `./genflags --libs`
+LDFLAGS = -flto
+LDLIBS  = `./genflags --libs`
 
 prog = task
 objs = src/common.o    \
@@ -16,7 +17,7 @@ objs = src/common.o    \
 
 all: ${prog}
 ${prog}: ${objs}
-	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${objs}
+	${CC} ${CFLAGS} ${LDFLAGS} ${LDLIBS} -o $@ ${objs}
 
 src/common.o: src/common.c
 	${CC} ${CFLAGS} -c -o $@ $<
