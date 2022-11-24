@@ -58,9 +58,9 @@ mktaske(int dfd, char *s)
 	char path[] = "/tmp/task-add.XXXXXX";
 
 	if ((fd = mkstemp(path)) == -1)
-		err(EXIT_FAILURE, "mkstemp: '%s'", path);
+		die("mkstemp: '%s'", path);
 	if ((fp = fdopen(fd, "w+")) == NULL)
-		err(EXIT_FAILURE, "fdopen: '%s'", path);
+		die("fdopen: '%s'", path);
 
 	fprintf(fp, "%s\n\nEnter the task description here\n",
 	        s != NULL ? s : "Enter the task title here");
@@ -81,9 +81,9 @@ mktaskt(int dfd, char *s)
 	FILE *fp;
 
 	if ((fd = openat(dfd, strstrip(s), OPENATFLAGS, 0644)) == -1)
-		err(EXIT_FAILURE, "openat: '%s'", s);
+		die("openat: '%s'", s);
 	if ((fp = fdopen(fd, "w")) == NULL)
-		err(EXIT_FAILURE, "fdopen: '%s'", s);
+		die("fdopen: '%s'", s);
 	fprintf(fp, "Task ID: %zu\n", mktaskid(dfd));
 
 	fclose(fp);
@@ -107,30 +107,30 @@ mktask_from_file(FILE *ifp, int dfd)
 		bbs += strlen(s) + 1;
 		if (buf == NULL) {
 			if ((buf = calloc(bbs, sizeof(char))) == NULL)
-				err(EXIT_FAILURE, "calloc");
+				die("calloc");
 		} else {
 			if ((buf = realloc(buf, bbs)) == NULL)
-				err(EXIT_FAILURE, "realloc");
+				die("realloc");
 		}
 		strlcat(buf, " ", bbs);
 		strlcat(buf, s, bbs);
 	}
 	if (ferror(ifp))
-		err(EXIT_FAILURE, "getline");
+		die("getline");
 
 	s = strstrip(buf);
 	if (stravis(&vbuf, s, 0) == -1)
-		err(EXIT_FAILURE, "stravis: '%s'", s);
+		die("stravis: '%s'", s);
 	if ((fd = openat(dfd, vbuf, OPENATFLAGS, 0644)) == -1)
-		err(EXIT_FAILURE, "openat: '%s'", vbuf);
+		die("openat: '%s'", vbuf);
 
 	if ((ofp = fdopen(fd, "w")) == NULL)
-		err(EXIT_FAILURE, "fdopen: '%s'", vbuf);
+		die("fdopen: '%s'", vbuf);
 	fprintf(ofp, "Task ID: %zu\n\n", mktaskid(dfd));
 	while ((nr = getline(&line, &lbs, ifp)) != -1)
 		fputs(line, ofp);
 	if (ferror(ifp))
-		err(EXIT_FAILURE, "getline: '%s'", vbuf);
+		die("getline: '%s'", vbuf);
 
 	free(buf);
 	free(line);
@@ -150,13 +150,13 @@ spawneditor(char *path)
 	}
 
 	if ((pid = fork()) == -1)
-		err(EXIT_FAILURE, "fork");
+		die("fork");
 	else if (pid == 0) {
 		execlp(e, e, path, NULL);
-		err(EXIT_FAILURE, "execlp");
+		die("execlp");
 	}
 	if (waitpid(pid, NULL, 0) == -1)
-		err(EXIT_FAILURE, "waitpid");
+		die("waitpid");
 }
 
 size_t
@@ -167,7 +167,7 @@ mktaskid(int fd)
 	struct dirent *ent;
 
 	if ((dp = fdopendir(fd)) == NULL)
-		err(EXIT_FAILURE, "fdopendir");
+		die("fdopendir");
 	while ((ent = readdir(dp)) != NULL) {
 		if (!streq(ent->d_name, ".") && !streq(ent->d_name, ".."))
 			cnt++;

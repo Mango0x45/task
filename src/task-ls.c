@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "task.h"
 
 struct task_vector {
@@ -69,17 +70,17 @@ lstasks(int dfd)
 	};
 
 	if ((vec.tasks = malloc(vec.bufsize * sizeof(struct task))) == NULL)
-		err(EXIT_FAILURE, "malloc");
+		die("malloc");
 
 	if ((dp = fdopendir(dfd)) == NULL)
-		err(EXIT_FAILURE, "fdopendir");
+		die("fdopendir");
 	while ((ent = readdir(dp)) != NULL) {
 		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
 			continue;
 		if ((fd = openat(dfd, ent->d_name, O_RDONLY)) == -1)
-			err(EXIT_FAILURE, "openat: '%s'", ent->d_name);
+			die("openat: '%s'", ent->d_name);
 		if ((fp = fdopen(fd, "r")) == NULL)
-			err(EXIT_FAILURE, "fdopen: '%s'", ent->d_name);
+			die("fdopen: '%s'", ent->d_name);
 		tsk.title = ent->d_name;
 		if (fscanf(fp, "Task ID: %zu", &tsk.id) != 1)
 			warnx("%s: Counldn't parse task ID", ent->d_name);
@@ -104,29 +105,29 @@ outputlist(struct task_vector vec)
 	FILE *fp;
 
 	if (pipe(fds) == -1)
-		err(EXIT_FAILURE, "pipe");
+		die("pipe");
 	if ((pid = fork()) == -1)
-		err(EXIT_FAILURE, "fork");
+		die("fork");
 	if (pid == 0) {
 		close(fds[WRITE]);
 		close(STDIN_FILENO);
 		if (dup2(fds[READ], STDIN_FILENO) == -1)
-			err(EXIT_FAILURE, "dup2");
+			die("dup2");
 		close(fds[READ]);
 		execlp("less", "less", "-FS", NULL);
-		err(EXIT_FAILURE, "execlp");
+		die("execlp");
 	}
 
 	close(fds[READ]);
 	pad = sizetlen(vec.tasks[vec.len - 1].id);
 	if ((fp = fdopen(fds[WRITE], "w")) == NULL)
-		err(EXIT_FAILURE, "fdopen: Pipe to pager");
+		die("fdopen: Pipe to pager");
 	for (size_t i = 0; i < vec.len; i++)
 		fprintf(fp, "%*zu. %s\n", pad,
 		        vec.tasks[i].id, vec.tasks[i].title);
 	fclose(fp);
 	if (waitpid(pid, NULL, 0) == -1)
-		err(EXIT_FAILURE, "waitpid");
+		die("waitpid");
 }
 
 void
@@ -137,7 +138,7 @@ append(struct task_vector *vec, struct task tsk)
 		vec->tasks = realloc(vec->tasks,
 		                     vec->bufsize * sizeof(struct task));
 		if (vec->tasks == NULL)
-			err(EXIT_FAILURE, "realloc");
+			die("realloc");
 	}
 	vec->tasks[vec->len++] = tsk;
 }

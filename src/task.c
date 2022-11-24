@@ -72,19 +72,19 @@ mkdatadirs(int *fds)
 		errtoolong("%s/task", buf);
 
 	if (mkdir(buf, 0777) == -1 && errno != EEXIST)
-		err(EXIT_FAILURE, "mkdir: '%s'", buf);
+		die("mkdir: '%s'", buf);
 	if ((fd = open(buf, O_PATH)) == -1)
-		err(EXIT_FAILURE, "open: '%s'", buf);
+		die("open: '%s'", buf);
 
 	if (mkdirat(fd,  DONEDIR, 0777) == -1 && errno != EEXIST)
-		err(EXIT_FAILURE, "mkdir: '%s/"DONEDIR"'", buf);
+		die("mkdir: '%s/"DONEDIR"'", buf);
 	if (mkdirat(fd, NDONEDIR, 0777) == -1 && errno != EEXIST)
-		err(EXIT_FAILURE, "mkdir: '%s/"NDONEDIR"'", buf);
+		die("mkdir: '%s/"NDONEDIR"'", buf);
 
 	if ((fds[DONE]  = openat(fd,  DONEDIR, O_PATH)) == -1)
-		err(EXIT_FAILURE, "openat: '%s/"DONEDIR"'", buf);
+		die("openat: '%s/"DONEDIR"'", buf);
 	if ((fds[NDONE] = openat(fd, NDONEDIR, O_PATH)) == -1)
-		err(EXIT_FAILURE, "openat: '%s/"NDONEDIR"'", buf);
+		die("openat: '%s/"NDONEDIR"'", buf);
 
 	close(fd);
 }
