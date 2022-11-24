@@ -83,6 +83,9 @@ lstasks(int dfd)
 			die("fdopen: '%s'", ent->d_name);
 		tsk.title = ent->d_name;
 		if (fscanf(fp, "Task ID: %zu", &tsk.id) != 1)
+			/* TODO: Make the program exit with EXIT_FAILURE if this
+			 * warning is issued.
+			 */
 			warnx("%s: Couldn't parse task ID", ent->d_name);
 		else
 			append(&vec, tsk);
