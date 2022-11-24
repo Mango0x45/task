@@ -84,7 +84,8 @@ lstasks(int dfd)
 		tsk.title = ent->d_name;
 		if (fscanf(fp, "Task ID: %zu", &tsk.id) != 1)
 			warnx("%s: Counldn't parse task ID", ent->d_name);
-		append(&vec, tsk);
+		else
+			append(&vec, tsk);
 		fclose(fp);
 	}
 
