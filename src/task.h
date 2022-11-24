@@ -9,7 +9,7 @@
 extern const char *argv0;
 
 void subcmdadd(int, char **, int *);
-void subcmdlist(int);
+void subcmdlist(int, char **, int *);
 void subcmddone(int);
 
 enum fd_type {
@@ -17,6 +17,11 @@ enum fd_type {
 	NDONE,
 	/* Number of enum members */
 	FD_COUNT
+};
+
+struct task {
+	size_t id;
+	const char *title;
 };
 
 #endif /* !TASK_H */

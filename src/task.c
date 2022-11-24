@@ -36,7 +36,7 @@ main(int argc, char *argv[])
 	if (streq(argv[0], "add"))
 		subcmdadd(argc, argv, fds);
 	else if (streq(argv[0], "ls"))
-		subcmdlist(0);
+		subcmdlist(argc, argv, fds);
 	else if (streq(argv[0], "done"))
 		subcmddone(0);
 	else {
