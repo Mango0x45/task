@@ -24,10 +24,11 @@ enum pipe_ends {
 	WRITE
 };
 
+static int  printbody(FILE *, int);
 static int  sizetlen(size_t);
 static int  qsort_helper(const void *, const void *);
-static void lstasks(int);
-static void outputlist(struct task_vector);
+static void lstasks(int, bool);
+static void outputlist(struct task_vector, int, bool);
 static void append(struct task_vector *, struct task);
 
 void
@@ -39,7 +40,7 @@ subcmdlist(int argc, char **argv, int *dfds)
 		{"long", no_argument, NULL, 'l'},
 		{ NULL,  0,           NULL,  0 }
 	};
-	(void)lflag;
+
 	while ((opt = getopt_long(argc, argv, "l", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'l':
@@ -53,11 +54,11 @@ subcmdlist(int argc, char **argv, int *dfds)
 	}
 
 	argc -= optind, argv += optind;
-	lstasks(dfds[NDONE]);
+	lstasks(dfds[NDONE], lflag);
 }
 
 void
-lstasks(int dfd)
+lstasks(int dfd, bool lflag)
 {
 	int fd;
 	DIR *dp;
@@ -95,18 +96,19 @@ lstasks(int dfd)
 	qsort(vec.tasks, vec.len, sizeof(struct task), &qsort_helper);
 
 	if (vec.len > 0)
-		outputlist(vec);
+		outputlist(vec, dfd, lflag);
 
 	free(vec.tasks);
 	closedir(dp);
 }
 
 void
-outputlist(struct task_vector vec)
+outputlist(struct task_vector vec, int dfd, bool lflag)
 {
-	int pad, fds[2];
+	int pad, fd, fds[2];
 	pid_t pid;
-	FILE *fp;
+	FILE *pager;
+	struct task tsk;
 
 	if (pipe(fds) == -1)
 		die("pipe");
@@ -124,14 +126,55 @@ outputlist(struct task_vector vec)
 
 	close(fds[READ]);
 	pad = sizetlen(vec.tasks[vec.len - 1].id);
-	if ((fp = fdopen(fds[WRITE], "w")) == NULL)
+	if ((pager = fdopen(fds[WRITE], "w")) == NULL)
 		die("fdopen: Pipe to pager");
-	for (size_t i = 0; i < vec.len; i++)
-		fprintf(fp, "%*zu. %s\n", pad,
-		        vec.tasks[i].id, vec.tasks[i].title);
-	fclose(fp);
+	if (!lflag) {
+		for (size_t i = 0; i < vec.len; i++) {
+			tsk = vec.tasks[i];
+			fprintf(pager, "%*zu. %s\n", pad, tsk.id, tsk.title);
+		}
+	} else {
+		for (size_t i = 0; i < vec.len; i++) {
+			tsk = vec.tasks[i];
+			if ((fd = openat(dfd, tsk.title, O_RDONLY)) == -1)
+				die("openat: '%s'", tsk.title);
+			fprintf(pager, "Task Title: %s\nTask ID:    %zu\n",
+			        tsk.title, tsk.id);
+			if (printbody(pager, fd) == -1)
+				warn("printbody: '%s'", tsk.title);
+			if (i < vec.len - 1)
+				fputc('\n', pager);
+			close(fd);
+		}
+	}
+	fclose(pager);
 	if (waitpid(pid, NULL, 0) == -1)
 		die("waitpid");
+}
+
+int
+printbody(FILE *stream, int fd)
+{
+	int nls = 0;
+	bool wasnl = false;
+	ssize_t nr;
+	char buf[BUFSIZ];
+
+	while ((nr = read(fd, buf, BUFSIZ)) != -1 && nr != 0) {
+		for (ssize_t i = 0; i < nr; i++) {
+			if (buf[i] == '\n') {
+				nls++;
+				wasnl = true;
+			} else if (wasnl) {
+				fputs("    ", stream);
+				wasnl = false;
+			}
+			if (nls >= 2)
+				fputc(buf[i], stream);
+		}
+	}
+
+	return nr == -1 ? -1 : 0;
 }
 
 void
@@ -147,7 +190,7 @@ append(struct task_vector *vec, struct task tsk)
 	vec->tasks[vec->len++] = tsk;
 }
 
-static int
+int
 sizetlen(size_t n)
 {
 	return n < 10ULL ? 1
