@@ -12,7 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <vis.h>
 
 #include "common.h"
 #include "task.h"
@@ -93,7 +92,7 @@ void
 mktask_from_file(FILE *ifp, int dfd)
 {
 	int fd;
-	char *s, *buf, *vbuf, *line;
+	char *s, *buf, *line;
 	size_t bbs = 1, lbs = 0;
 	ssize_t nr;
 	FILE *ofp;
@@ -119,22 +118,19 @@ mktask_from_file(FILE *ifp, int dfd)
 		die("getline");
 
 	s = strstrip(buf);
-	if (stravis(&vbuf, s, 0) == -1)
-		die("stravis: '%s'", s);
-	if ((fd = openat(dfd, vbuf, OPENATFLAGS, 0644)) == -1)
-		die("openat: '%s'", vbuf);
+	if ((fd = openat(dfd, s, OPENATFLAGS, 0644)) == -1)
+		die("openat: '%s'", s);
 
 	if ((ofp = fdopen(fd, "w")) == NULL)
-		die("fdopen: '%s'", vbuf);
+		die("fdopen: '%s'", s);
 	fprintf(ofp, "Task ID: %zu\n\n", mktaskid(dfd));
 	while ((nr = getline(&line, &lbs, ifp)) != -1)
 		fputs(line, ofp);
 	if (ferror(ifp))
-		die("getline: '%s'", vbuf);
+		die("getline: '%s'", s);
 
 	free(buf);
 	free(line);
-	free(vbuf);
 	fclose(ofp);
 }
 
