@@ -10,7 +10,7 @@ extern const char *argv0;
 
 void subcmdadd(int, char **, int *);
 void subcmdlist(int, char **, int *);
-void subcmddone(int);
+void subcmddone(int, char **, int *);
 
 enum fd_type {
 	DONE,

@@ -38,7 +38,7 @@ main(int argc, char *argv[])
 	else if (streq(argv[0], "ls"))
 		subcmdlist(argc, argv, fds);
 	else if (streq(argv[0], "done"))
-		subcmddone(0);
+		subcmddone(argc, argv, fds);
 	else {
 		warnx("invalid subcommand -- '%s'", argv[0]);
 		usage();
