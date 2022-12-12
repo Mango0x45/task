@@ -1,8 +1,6 @@
 #ifndef TASK_H
 #define TASK_H
 
-#include <stddef.h>
-
 #define  DONEDIR "done"
 #define NDONEDIR "notdone"
 
@@ -20,7 +18,7 @@ enum fd_type {
 };
 
 struct task {
-	size_t id;
+	uintmax_t id;
 	const char *title;
 };
 

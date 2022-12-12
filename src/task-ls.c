@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +26,7 @@ enum pipe_ends {
 };
 
 static int  printbody(FILE *, int);
-static int  sizetlen(size_t);
+static int  uintmaxlen(uintmax_t);
 static int  qsort_helper(const void *, const void *);
 static void lstasks(int, bool);
 static void outputlist(struct task_vector, int, bool);
@@ -83,7 +84,7 @@ lstasks(int dfd, bool lflag)
 		if ((fp = fdopen(fd, "r")) == NULL)
 			die("fdopen: '%s'", ent->d_name);
 		tsk.title = ent->d_name;
-		if (fscanf(fp, "Task ID: %zu", &tsk.id) != 1)
+		if (fscanf(fp, "Task ID: %ju", &tsk.id) != 1)
 			/* TODO: Make the program exit with EXIT_FAILURE if this
 			 * warning is issued.
 			 */
@@ -125,20 +126,20 @@ outputlist(struct task_vector vec, int dfd, bool lflag)
 	}
 
 	close(fds[READ]);
-	pad = sizetlen(vec.tasks[vec.len - 1].id);
+	pad = uintmaxlen(vec.tasks[vec.len - 1].id);
 	if ((pager = fdopen(fds[WRITE], "w")) == NULL)
 		die("fdopen: Pipe to pager");
 	if (!lflag) {
 		for (size_t i = 0; i < vec.len; i++) {
 			tsk = vec.tasks[i];
-			fprintf(pager, "%*zu. %s\n", pad, tsk.id, tsk.title);
+			fprintf(pager, "%*ju. %s\n", pad, tsk.id, tsk.title);
 		}
 	} else {
 		for (size_t i = 0; i < vec.len; i++) {
 			tsk = vec.tasks[i];
 			if ((fd = openat(dfd, tsk.title, O_RDONLY)) == -1)
 				die("openat: '%s'", tsk.title);
-			fprintf(pager, "Task Title: %s\nTask ID:    %zu\n",
+			fprintf(pager, "Task Title: %s\nTask ID:    %ju\n",
 			        tsk.title, tsk.id);
 			if (printbody(pager, fd) == -1)
 				warn("printbody: '%s'", tsk.title);
@@ -191,7 +192,7 @@ append(struct task_vector *vec, struct task tsk)
 }
 
 int
-sizetlen(size_t n)
+uintmaxlen(uintmax_t n)
 {
 	return n < 10ULL ? 1
 	     : n < 100ULL ? 2

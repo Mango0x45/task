@@ -8,6 +8,7 @@
 #include <getopt.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,11 +19,11 @@
 
 #define OPENATFLAGS (O_CREAT | O_EXCL | O_WRONLY)
 
-static void   mktaske(int, char *);
-static void   mktaskt(int, char *);
-static void   mktask_from_file(FILE *, int);
-static void   spawneditor(char *);
-static size_t mktaskid(int);
+static void      mktaske(int, char *);
+static void      mktaskt(int, char *);
+static void      mktask_from_file(FILE *, int);
+static void      spawneditor(char *);
+static uintmax_t mktaskid(int);
 
 void
 subcmdadd(int argc, char **argv, int *dfds)
@@ -83,7 +84,7 @@ mktaskt(int dfd, char *s)
 		die("openat: '%s'", s);
 	if ((fp = fdopen(fd, "w")) == NULL)
 		die("fdopen: '%s'", s);
-	fprintf(fp, "Task ID: %zu\n", mktaskid(dfd));
+	fprintf(fp, "Task ID: %ju\n", mktaskid(dfd));
 
 	fclose(fp);
 }
@@ -123,7 +124,7 @@ mktask_from_file(FILE *ifp, int dfd)
 
 	if ((ofp = fdopen(fd, "w")) == NULL)
 		die("fdopen: '%s'", s);
-	fprintf(ofp, "Task ID: %zu\n\n", mktaskid(dfd));
+	fprintf(ofp, "Task ID: %ju\n\n", mktaskid(dfd));
 	while ((nr = getline(&line, &lbs, ifp)) != -1)
 		fputs(line, ofp);
 	if (ferror(ifp))
@@ -155,11 +156,11 @@ spawneditor(char *path)
 		die("waitpid");
 }
 
-size_t
+uintmax_t
 mktaskid(int fd)
 {
 	DIR *dp;
-	size_t cnt = 0;
+	uintmax_t cnt = 0;
 	struct dirent *ent;
 
 	if ((dp = fdopendir(fd)) == NULL)
