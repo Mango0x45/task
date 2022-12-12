@@ -118,6 +118,9 @@ mktask_from_file(FILE *ifp, int dfd)
 	if (ferror(ifp))
 		die("getline");
 
+	if (buf == NULL)
+		errx(EXIT_FAILURE, "Empty task provided; aborting");
+
 	s = strstrip(buf);
 	if ((fd = openat(dfd, s, OPENATFLAGS, 0644)) == -1)
 		die("openat: '%s'", s);
