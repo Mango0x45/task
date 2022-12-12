@@ -7,6 +7,9 @@ CFLAGS   = -Wall -Wextra -Wpedantic -Werror      \
 CPPFLAGS = `./genflags --cflags` -DLIBBSD_NETBSD_VIS
 LDLIBS   = `./genflags --libs`
 
+PREFIX  = /usr/local
+DPREFIX = ${DESTDIR}${PREFIX}
+
 prog = task
 objs = src/common.o    \
        src/task-add.o  \
@@ -31,3 +34,7 @@ src/task.o: src/task.c
 
 clean:
 	rm -f ${prog} src/*.o
+
+install:
+	mkdir -p ${DPREFIX}/bin
+	cp ${prog} ${DPREFIX}/bin
