@@ -55,7 +55,7 @@ subcmdlist(int argc, char **argv, int *dfds)
 	}
 
 	argc -= optind, argv += optind;
-	lstasks(dfds[NDONE], lflag);
+	lstasks(dfds[TODO], lflag);
 }
 
 void

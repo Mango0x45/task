@@ -1,8 +1,8 @@
 #ifndef TASK_H
 #define TASK_H
 
-#define  DONEDIR "done"
-#define NDONEDIR "notdone"
+#define DONEDIR "done"
+#define TODODIR "todo"
 
 extern const char *argv0;
 
@@ -12,7 +12,7 @@ void subcmddone(int, char **, int *);
 
 enum fd_type {
 	DONE,
-	NDONE,
+	TODO,
 	/* Number of enum members */
 	FD_COUNT
 };

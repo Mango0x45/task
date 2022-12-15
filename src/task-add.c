@@ -47,7 +47,7 @@ subcmdadd(int argc, char **argv, int *dfds)
 	}
 
 	argc -= optind, argv += optind;
-	(!eflag && *argv != NULL ? mktaskt : mktaske)(dfds[NDONE], *argv);
+	(!eflag && *argv != NULL ? mktaskt : mktaske)(dfds[TODO], *argv);
 }
 
 void

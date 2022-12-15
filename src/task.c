@@ -45,7 +45,7 @@ main(int argc, char *argv[])
 	}
 
 	close(fds[DONE]);
-	close(fds[NDONE]);
+	close(fds[TODO]);
 	return EXIT_SUCCESS;
 }
 
@@ -76,15 +76,15 @@ mkdatadirs(int *fds)
 	if ((fd = open(buf, O_PATH)) == -1)
 		die("open: '%s'", buf);
 
-	if (mkdirat(fd,  DONEDIR, 0777) == -1 && errno != EEXIST)
+	if (mkdirat(fd, DONEDIR, 0777) == -1 && errno != EEXIST)
 		die("mkdir: '%s/"DONEDIR"'", buf);
-	if (mkdirat(fd, NDONEDIR, 0777) == -1 && errno != EEXIST)
-		die("mkdir: '%s/"NDONEDIR"'", buf);
+	if (mkdirat(fd, TODODIR, 0777) == -1 && errno != EEXIST)
+		die("mkdir: '%s/"TODODIR"'", buf);
 
-	if ((fds[DONE]  = openat(fd,  DONEDIR, O_PATH)) == -1)
+	if ((fds[DONE] = openat(fd, DONEDIR, O_PATH)) == -1)
 		die("openat: '%s/"DONEDIR"'", buf);
-	if ((fds[NDONE] = openat(fd, NDONEDIR, O_PATH)) == -1)
-		die("openat: '%s/"NDONEDIR"'", buf);
+	if ((fds[TODO] = openat(fd, TODODIR, O_PATH)) == -1)
+		die("openat: '%s/"TODODIR"'", buf);
 
 	close(fd);
 }

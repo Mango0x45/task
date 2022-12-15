@@ -44,12 +44,12 @@ taskdone(int *dfds, uintmax_t tid)
 	DIR *dp;
 	struct dirent *ent;
 
-	if ((dp = fdopendir(dfds[NDONE])) == NULL)
+	if ((dp = fdopendir(dfds[TODO])) == NULL)
 		die("fdopendir");
 	while ((ent = readdir(dp)) != NULL) {
 		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
 			continue;
-		if ((fd = openat(dfds[NDONE], ent->d_name, O_RDONLY)) == -1)
+		if ((fd = openat(dfds[TODO], ent->d_name, O_RDONLY)) == -1)
 			die("openat: '%s'", ent->d_name);
 		if ((fp = fdopen(fd, "r")) == NULL)
 			die("fdopen: '%s'", ent->d_name);
@@ -61,7 +61,7 @@ taskdone(int *dfds, uintmax_t tid)
 			fclose(fp);
 		} else if (id == tid) {
 			fclose(fp);
-			if (renameat(dfds[NDONE], ent->d_name,
+			if (renameat(dfds[TODO], ent->d_name,
 					dfds[DONE], ent->d_name) == -1)
 				die("renameat: '%s'", ent->d_name);
 			return;
