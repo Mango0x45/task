@@ -4,12 +4,6 @@
 #define DONEDIR "done"
 #define TODODIR "todo"
 
-extern const char *argv0;
-
-void subcmdadd(int, char **, int *);
-void subcmdlist(int, char **, int *);
-void subcmddone(int, char **, int *);
-
 enum fd_type {
 	DONE,
 	TODO,
@@ -21,5 +15,12 @@ struct task {
 	uintmax_t id;
 	const char *title, *filename;
 };
+
+extern int dfds[FD_COUNT];
+extern const char *argv0;
+
+void subcmdadd(int, char **);
+void subcmdlist(int, char **);
+void subcmddone(int, char **);
 
 #endif /* !TASK_H */

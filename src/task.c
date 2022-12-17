@@ -15,40 +15,40 @@
 
 #define D_FLAGS (O_RDONLY | O_DIRECTORY)
 
+int dfds[FD_COUNT];
 const char *argv0;
 
-static void mkdatadirs(int *);
+static void mkdatadirs(void);
 static void usage(void);
 
 int
 main(int argc, char *argv[])
 {
-	int fds[FD_COUNT];
 	argv0 = getprogname();
 
 	if (argc == 1)
 		usage();
-	mkdatadirs(fds);
+	mkdatadirs();
 
 	argc--, argv++;
 	if (streq(argv[0], "add"))
-		subcmdadd(argc, argv, fds);
+		subcmdadd(argc, argv);
 	else if (streq(argv[0], "ls"))
-		subcmdlist(argc, argv, fds);
+		subcmdlist(argc, argv);
 	else if (streq(argv[0], "done"))
-		subcmddone(argc, argv, fds);
+		subcmddone(argc, argv);
 	else {
 		warnx("invalid subcommand -- '%s'", argv[0]);
 		usage();
 	}
 
-	close(fds[DONE]);
-	close(fds[TODO]);
+	close(dfds[DONE]);
+	close(dfds[TODO]);
 	return EXIT_SUCCESS;
 }
 
 void
-mkdatadirs(int *fds)
+mkdatadirs(void)
 {
 	int fd;
 	bool home = false;
@@ -79,9 +79,9 @@ mkdatadirs(int *fds)
 	if (mkdirat(fd, TODODIR, 0777) == -1 && errno != EEXIST)
 		die("mkdir: '%s/"TODODIR"'", buf);
 
-	if ((fds[DONE] = openat(fd, DONEDIR, D_FLAGS)) == -1)
+	if ((dfds[DONE] = openat(fd, DONEDIR, D_FLAGS)) == -1)
 		die("openat: '%s/"DONEDIR"'", buf);
-	if ((fds[TODO] = openat(fd, TODODIR, D_FLAGS)) == -1)
+	if ((dfds[TODO] = openat(fd, TODODIR, D_FLAGS)) == -1)
 		die("openat: '%s/"TODODIR"'", buf);
 
 	close(fd);

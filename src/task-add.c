@@ -19,16 +19,16 @@
 #define OPENATFLAGS (O_CREAT | O_EXCL | O_WRONLY)
 #define TASK_PATH_MAX 4096
 
-static void      mktaske(int, char *);
-static void      mktaskt(int, char *);
-static void      mktask_from_file(FILE *, int);
+static void      mktaske(char *);
+static void      mktaskt(char *);
+static void      mktask_from_file(FILE *);
 static void      spawneditor(char *);
-static uintmax_t mktaskid(int);
-static char     *getpath(int, char *);
+static uintmax_t mktaskid(void);
+static char     *getpath(char *);
 static long      getpathmax(int);
 
 void
-subcmdadd(int argc, char **argv, int *dfds)
+subcmdadd(int argc, char **argv)
 {
 	int opt;
 	bool eflag = false;
@@ -49,11 +49,11 @@ subcmdadd(int argc, char **argv, int *dfds)
 	}
 
 	argc -= optind, argv += optind;
-	(!eflag && *argv != NULL ? mktaskt : mktaske)(dfds[TODO], *argv);
+	(!eflag && *argv != NULL ? mktaskt : mktaske)(*argv);
 }
 
 void
-mktaske(int dfd, char *s)
+mktaske(char *s)
 {
 	int fd;
 	FILE *fp;
@@ -70,21 +70,21 @@ mktaske(int dfd, char *s)
 	spawneditor(path);
 	rewind(fp);
 
-	mktask_from_file(fp, dfd);
+	mktask_from_file(fp);
 
 	unlink(path);
 	fclose(fp);
 }
 
 void
-mktaskt(int dfd, char *s)
+mktaskt(char *s)
 {
 	int fd;
 	char *path;
 	FILE *fp;
 
-	path = getpath(dfd, s);
-	if ((fd = openat(dfd, path, OPENATFLAGS, 0644)) == -1)
+	path = getpath(s);
+	if ((fd = openat(dfds[TODO], path, OPENATFLAGS, 0644)) == -1)
 		die("openat: '%s'", path);
 	if ((fp = fdopen(fd, "w")) == NULL)
 		die("fdopen: '%s'", path);
@@ -94,7 +94,7 @@ mktaskt(int dfd, char *s)
 }
 
 void
-mktask_from_file(FILE *ifp, int dfd)
+mktask_from_file(FILE *ifp)
 {
 	int fd;
 	char *s, *buf, *line, *path;
@@ -120,8 +120,8 @@ mktask_from_file(FILE *ifp, int dfd)
 	if (buf == NULL)
 		errx(EXIT_FAILURE, "Empty task provided; aborting");
 
-	path = getpath(dfd, buf);
-	if ((fd = openat(dfd, path, OPENATFLAGS, 0644)) == -1)
+	path = getpath(buf);
+	if ((fd = openat(dfds[TODO], path, OPENATFLAGS, 0644)) == -1)
 		die("openat: '%s'", path);
 	if ((ofp = fdopen(fd, "w")) == NULL)
 		die("fdopen: '%s'", path);
@@ -159,49 +159,49 @@ spawneditor(char *path)
 }
 
 uintmax_t
-mktaskid(int fd)
+mktaskid(void)
 {
-	int nfd;
+	int fd;
 	DIR *dp;
 	uintmax_t tmp, max = 0;
 	struct dirent *ent;
 
-	/* From the fdopendir() manual page:
-	 *
-	 *     After a successful call to fdopendir(), fd is used internally by
-	 *     the implementation, and should not otherwise be used by the
-	 *     application.
-	 *
-	 * We do want to keep using ‘fd’ afterwards, so we need to duplicate the
-	 * file descriptor.
-	 */
-	if ((nfd = dup(fd)) == -1)
-		die("dup");
+	for (enum fd_type i = 0; i < FD_COUNT; i++) {
+		/* From the fdopendir() manual page:
+		 *
+		 *     After a successful call to fdopendir(), fd is used
+		 *     internally by the implementation, and should not
+		 *     otherwise be used by the application.
+		 *
+		 * We do want to keep using our fds afterwards, so we need to
+		 * duplicate the file descriptors.
+		 */
+		if ((fd = dup(dfds[i])) == -1)
+			die("dup");
 
-	if ((dp = fdopendir(nfd)) == NULL)
-		die("fdopendir");
-	while ((ent = readdir(dp)) != NULL) {
-		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
-			continue;
-		sscanf(ent->d_name, "%ju", &tmp);
-		if (tmp > max)
-			max = tmp;
+		if ((dp = fdopendir(fd)) == NULL)
+			die("fdopendir");
+		while ((ent = readdir(dp)) != NULL) {
+			if (sscanf(ent->d_name, "%ju", &tmp) == 1 && tmp > max)
+				max = tmp;
+		}
+
+		closedir(dp);
 	}
 
-	closedir(dp);
 	return max + 1;
 }
 
 char *
-getpath(int dfd, char *s)
+getpath(char *s)
 {
 	char *path;
 	size_t pathmax, pathlen;
 	uintmax_t tid;
 
 	s = strstrip(s);
-	tid = mktaskid(dfd);
-	pathmax = getpathmax(dfd);
+	tid = mktaskid();
+	pathmax = getpathmax(dfds[TODO]);
 	pathlen = strlen(s) + uintmaxlen(tid) + 2;
 
 	if (pathlen > (size_t) pathmax) {

@@ -32,7 +32,7 @@ static void outputlist(struct task_vector, int, bool);
 static void append(struct task_vector *, struct task);
 
 void
-subcmdlist(int argc, char **argv, int *dfds)
+subcmdlist(int argc, char **argv)
 {
 	int opt;
 	bool lflag = false;

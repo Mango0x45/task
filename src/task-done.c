@@ -11,10 +11,10 @@
 #include "common.h"
 #include "task.h"
 
-void taskdone(int *, uintmax_t);
+void taskdone(uintmax_t);
 
 void
-subcmddone(int argc, char **argv, int *dfds)
+subcmddone(int argc, char **argv)
 {
 	char *p;
 	uintmax_t id;
@@ -26,7 +26,7 @@ subcmddone(int argc, char **argv, int *dfds)
 	for (int i = 1; i < argc; i++) {
 		id = strtoumax(argv[i], &p, 10);
 		if (*argv[i] != '\0' && *p == '\0')
-			taskdone(dfds, id);
+			taskdone(id);
 		else
 			/* TODO: Make the program exit with EXIT_FAILURE if this
 			 * warning is issued.
@@ -36,7 +36,7 @@ subcmddone(int argc, char **argv, int *dfds)
 }
 
 void
-taskdone(int *dfds, uintmax_t tid)
+taskdone(uintmax_t tid)
 {
 	DIR *dp;
 	uintmax_t id;
