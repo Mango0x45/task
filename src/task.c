@@ -8,7 +8,6 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,6 +23,7 @@ int dfds[FD_COUNT];
 const char *argv0;
 
 static void mkdatadirs(void);
+static long getpathmax(const char *);
 static void usage(void);
 
 int
@@ -57,8 +57,8 @@ mkdatadirs(void)
 {
 	int fd;
 	bool home = false;
-	char *base, buf[PATH_MAX + 1];
-	const size_t n = sizeof(buf);
+	char *base, *buf;
+	size_t n;
 
 	if ((base = getenv("XDG_DATA_HOME")) == NULL) {
 		if ((base = getenv("HOME")) == NULL)
@@ -66,6 +66,9 @@ mkdatadirs(void)
 			     "The HOME environment variable is not set");
 		home = true;
 	}
+
+	n = getpathmax(base) + 1;
+	buf = xmalloc(n);
 
 	if (strlcpy(buf, base, n) >= n)
 		errtoolong("%s", base);
@@ -94,7 +97,23 @@ mkdatadirs(void)
 	if ((dfds[TODO] = openat(fd, TODODIR, D_FLAGS)) == -1)
 		die("openat: '%s/"TODODIR"'", buf);
 
+	free(buf);
 	close(fd);
+}
+
+long
+getpathmax(const char *s)
+{
+	long pathmax;
+
+	errno = 0;
+	if ((pathmax = pathconf(s, _PC_PATH_MAX)) == -1) {
+		if (errno != 0)
+			die("pathconf");
+		return TASK_PATH_MAX;
+	}
+
+	return pathmax;
 }
 
 void

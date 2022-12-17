@@ -17,7 +17,6 @@
 #include "task.h"
 
 #define OPENATFLAGS (O_CREAT | O_EXCL | O_WRONLY)
-#define TASK_PATH_MAX 4096
 
 static void      mktaske(char *);
 static void      mktaskt(char *);
@@ -25,7 +24,7 @@ static void      mktask_from_file(FILE *);
 static void      spawneditor(char *);
 static uintmax_t mktaskid(void);
 static char     *getpath(char *);
-static long      getpathmax(int);
+static long      fgetnamemax(int);
 
 void
 subcmdadd(int argc, char **argv)
@@ -196,37 +195,37 @@ char *
 getpath(char *s)
 {
 	char *path;
-	size_t pathmax, pathlen;
+	size_t namemax, namelen;
 	uintmax_t tid;
 
 	s = strstrip(s);
 	tid = mktaskid();
-	pathmax = getpathmax(dfds[TODO]);
-	pathlen = strlen(s) + uintmaxlen(tid) + 2;
+	namemax = fgetnamemax(dfds[TODO]);
+	namelen = strlen(s) + uintmaxlen(tid) + 1;
 
-	if (pathlen > (size_t) pathmax) {
+	if (namelen > (size_t) namemax) {
 		errno = ENAMETOOLONG;
 		die("mktaskt: %ju-%s", tid, s);
 	}
 
-	path = xmalloc(pathlen);
+	path = xmalloc(namelen + 1);
 	sprintf(path, "%ju-%s", tid, s);
-	path[pathlen - 1] = '\0';
+	path[namelen] = '\0';
 
 	return path;
 }
 
 long
-getpathmax(int fd)
+fgetnamemax(int fd)
 {
-	long pathmax;
+	long namemax;
 
 	errno = 0;
-	if ((pathmax = fpathconf(fd, _PC_NAME_MAX)) == -1) {
+	if ((namemax = fpathconf(fd, _PC_NAME_MAX)) == -1) {
 		if (errno != 0)
 			die("fpathconf");
-		return TASK_PATH_MAX;
+		return TASK_NAME_MAX;
 	}
 
-	return pathmax;
+	return namemax;
 }
