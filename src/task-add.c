@@ -203,10 +203,8 @@ getpath(char *s)
 	namemax = fgetnamemax(dfds[TODO]);
 	namelen = strlen(s) + uintmaxlen(tid) + 1;
 
-	if (namelen > (size_t) namemax) {
-		errno = ENAMETOOLONG;
-		die("mktaskt: %ju-%s", tid, s);
-	}
+	if (namelen > (size_t) namemax)
+		errtoolong("mktaskt: %ju-%s", tid, s);
 
 	path = xmalloc(namelen + 1);
 	sprintf(path, "%ju-%s", tid, s);
