@@ -1,3 +1,8 @@
+/* On Linux we define this so that we can get the O_PATH flag for open(2) */
+#ifdef __linux__
+	#define _GNU_SOURCE
+#endif
+
 #include <sys/stat.h>
 
 #include <err.h>
@@ -71,7 +76,12 @@ mkdatadirs(void)
 
 	if (mkdir(buf, 0777) == -1 && errno != EEXIST)
 		die("mkdir: '%s'", buf);
+
+#ifdef __linux__
+	if ((fd = open(buf, O_PATH)) == -1)
+#else
 	if ((fd = open(buf, D_FLAGS)) == -1)
+#endif
 		die("open: '%s'", buf);
 
 	if (mkdirat(fd, DONEDIR, 0777) == -1 && errno != EEXIST)
