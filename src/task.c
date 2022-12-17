@@ -13,9 +13,7 @@
 #include "common.h"
 #include "task.h"
 
-#ifndef O_PATH
-	#define O_PATH (O_RDONLY | O_DIRECTORY)
-#endif
+#define D_FLAGS (O_RDONLY | O_DIRECTORY)
 
 const char *argv0;
 
@@ -73,7 +71,7 @@ mkdatadirs(int *fds)
 
 	if (mkdir(buf, 0777) == -1 && errno != EEXIST)
 		die("mkdir: '%s'", buf);
-	if ((fd = open(buf, O_PATH)) == -1)
+	if ((fd = open(buf, D_FLAGS)) == -1)
 		die("open: '%s'", buf);
 
 	if (mkdirat(fd, DONEDIR, 0777) == -1 && errno != EEXIST)
@@ -81,9 +79,9 @@ mkdatadirs(int *fds)
 	if (mkdirat(fd, TODODIR, 0777) == -1 && errno != EEXIST)
 		die("mkdir: '%s/"TODODIR"'", buf);
 
-	if ((fds[DONE] = openat(fd, DONEDIR, O_PATH)) == -1)
+	if ((fds[DONE] = openat(fd, DONEDIR, D_FLAGS)) == -1)
 		die("openat: '%s/"DONEDIR"'", buf);
-	if ((fds[TODO] = openat(fd, TODODIR, O_PATH)) == -1)
+	if ((fds[TODO] = openat(fd, TODODIR, D_FLAGS)) == -1)
 		die("openat: '%s/"TODODIR"'", buf);
 
 	close(fd);

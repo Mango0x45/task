@@ -19,7 +19,7 @@ enum fd_type {
 
 struct task {
 	uintmax_t id;
-	const char *title;
+	const char *title, *filename;
 };
 
 #endif /* !TASK_H */

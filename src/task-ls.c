@@ -26,7 +26,6 @@ enum pipe_ends {
 };
 
 static int  printbody(FILE *, int);
-static int  uintmaxlen(uintmax_t);
 static int  qsort_helper(const void *, const void *);
 static void lstasks(int, bool);
 static void outputlist(struct task_vector, int, bool);
@@ -61,9 +60,7 @@ subcmdlist(int argc, char **argv, int *dfds)
 void
 lstasks(int dfd, bool lflag)
 {
-	int fd;
 	DIR *dp;
-	FILE *fp;
 	struct dirent *ent;
 	struct task tsk;
 	struct task_vector vec = {
@@ -71,27 +68,27 @@ lstasks(int dfd, bool lflag)
 		.bufsize = 16,
 	};
 
-	if ((vec.tasks = malloc(vec.bufsize * sizeof(struct task))) == NULL)
-		die("malloc");
+	vec.tasks = xmalloc(vec.bufsize * sizeof(struct task));
 
 	if ((dp = fdopendir(dfd)) == NULL)
 		die("fdopendir");
 	while ((ent = readdir(dp)) != NULL) {
 		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
 			continue;
-		if ((fd = openat(dfd, ent->d_name, O_RDONLY)) == -1)
-			die("openat: '%s'", ent->d_name);
-		if ((fp = fdopen(fd, "r")) == NULL)
-			die("fdopen: '%s'", ent->d_name);
-		tsk.title = ent->d_name;
-		if (fscanf(fp, "Task ID: %ju", &tsk.id) != 1)
+		if (sscanf(ent->d_name, "%ju-", &tsk.id) != 1)
 			/* TODO: Make the program exit with EXIT_FAILURE if this
 			 * warning is issued.
 			 */
 			warnx("%s: Couldn't parse task ID", ent->d_name);
-		else
-			append(&vec, tsk);
-		fclose(fp);
+		else {
+			tsk.filename = ent->d_name;
+			tsk.title = strchr(ent->d_name, '-') + 1;
+			if (tsk.title[0] == '\0')
+				/* TODO: Same here as the above comment */
+				warnx("%s: Task title is empty", ent->d_name);
+			else
+				append(&vec, tsk);
+		}
 	}
 
 	qsort(vec.tasks, vec.len, sizeof(struct task), &qsort_helper);
@@ -106,8 +103,9 @@ lstasks(int dfd, bool lflag)
 void
 outputlist(struct task_vector vec, int dfd, bool lflag)
 {
-	int pad, fd, fds[2];
+	int fd, fds[2];
 	pid_t pid;
+	size_t pad;
 	FILE *pager;
 	struct task tsk;
 
@@ -132,17 +130,18 @@ outputlist(struct task_vector vec, int dfd, bool lflag)
 	if (!lflag) {
 		for (size_t i = 0; i < vec.len; i++) {
 			tsk = vec.tasks[i];
-			fprintf(pager, "%*ju. %s\n", pad, tsk.id, tsk.title);
+			fprintf(pager, "%*ju. %s\n",
+			       (int) pad, tsk.id, tsk.title);
 		}
 	} else {
 		for (size_t i = 0; i < vec.len; i++) {
 			tsk = vec.tasks[i];
-			if ((fd = openat(dfd, tsk.title, O_RDONLY)) == -1)
-				die("openat: '%s'", tsk.title);
+			if ((fd = openat(dfd, tsk.filename, O_RDONLY)) == -1)
+				die("openat: '%s'", tsk.filename);
 			fprintf(pager, "Task Title: %s\nTask ID:    %ju\n",
 			        tsk.title, tsk.id);
 			if (printbody(pager, fd) == -1)
-				warn("printbody: '%s'", tsk.title);
+				warn("printbody: '%s'", tsk.filename);
 			if (i < vec.len - 1)
 				fputc('\n', pager);
 			close(fd);
@@ -156,22 +155,24 @@ outputlist(struct task_vector vec, int dfd, bool lflag)
 int
 printbody(FILE *stream, int fd)
 {
-	int nls = 0;
-	bool wasnl = false;
+	bool init, wasnl;
 	ssize_t nr;
 	char buf[BUFSIZ];
 
+	init = wasnl = true;
 	while ((nr = read(fd, buf, BUFSIZ)) != -1 && nr != 0) {
 		for (ssize_t i = 0; i < nr; i++) {
-			if (buf[i] == '\n') {
-				nls++;
+			if (init) {
+				fputc('\n', stream);
+				init = false;
+			}
+			if (buf[i] == '\n')
 				wasnl = true;
-			} else if (wasnl) {
+			else if (wasnl) {
 				fputs("    ", stream);
 				wasnl = false;
 			}
-			if (nls >= 2)
-				fputc(buf[i], stream);
+			fputc(buf[i], stream);
 		}
 	}
 
@@ -183,36 +184,10 @@ append(struct task_vector *vec, struct task tsk)
 {
 	if (vec->len == vec->bufsize) {
 		vec->bufsize *= 2;
-		vec->tasks = realloc(vec->tasks,
-		                     vec->bufsize * sizeof(struct task));
-		if (vec->tasks == NULL)
-			die("realloc");
+		vec->tasks = xrealloc(vec->tasks,
+		                      vec->bufsize * sizeof(struct task));
 	}
 	vec->tasks[vec->len++] = tsk;
-}
-
-int
-uintmaxlen(uintmax_t n)
-{
-	return n < 10ULL ? 1
-	     : n < 100ULL ? 2
-	     : n < 1000ULL ? 3
-	     : n < 10000ULL ? 4
-	     : n < 100000ULL ? 5
-	     : n < 1000000ULL ? 6
-	     : n < 10000000ULL ? 7
-	     : n < 100000000ULL ? 8
-	     : n < 1000000000ULL ? 9
-	     : n < 10000000000ULL ? 10
-	     : n < 100000000000ULL ? 11
-	     : n < 1000000000000ULL ? 12
-	     : n < 10000000000000ULL ? 13
-	     : n < 100000000000000ULL ? 14
-	     : n < 1000000000000000ULL ? 15
-	     : n < 10000000000000000ULL ? 16
-	     : n < 100000000000000000ULL ? 17
-	     : n < 1000000000000000000ULL ? 18
-	     :                               19;
 }
 
 int

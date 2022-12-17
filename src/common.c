@@ -5,6 +5,35 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
+
+void *
+xmalloc(size_t size)
+{
+	void *r;
+	if ((r = malloc(size)) == NULL)
+		die("malloc");
+	return r;
+}
+
+void *
+xrealloc(void *p, size_t size)
+{
+	void *r;
+	if ((r = realloc(p, size)) == NULL)
+		die("realloc");
+	return r;
+}
+
+void *
+xcalloc(size_t nmemb, size_t size)
+{
+	void *r;
+	if ((r = calloc(nmemb, size)) == NULL)
+		die("calloc");
+	return r;
+}
+
 void
 errtoolong(const char *fmt, ...)
 {
@@ -39,4 +68,28 @@ strstrip(char *s)
 			*e = ' ';
 	}
 	return s;
+}
+
+size_t
+uintmaxlen(uintmax_t n)
+{
+	return n < 10ULL ? 1
+	     : n < 100ULL ? 2
+	     : n < 1000ULL ? 3
+	     : n < 10000ULL ? 4
+	     : n < 100000ULL ? 5
+	     : n < 1000000ULL ? 6
+	     : n < 10000000ULL ? 7
+	     : n < 100000000ULL ? 8
+	     : n < 1000000000ULL ? 9
+	     : n < 10000000000ULL ? 10
+	     : n < 100000000000ULL ? 11
+	     : n < 1000000000000ULL ? 12
+	     : n < 10000000000000ULL ? 13
+	     : n < 100000000000000ULL ? 14
+	     : n < 1000000000000000ULL ? 15
+	     : n < 10000000000000000ULL ? 16
+	     : n < 100000000000000000ULL ? 17
+	     : n < 1000000000000000000ULL ? 18
+	     :                               19;
 }

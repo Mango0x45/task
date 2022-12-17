@@ -38,31 +38,16 @@ subcmddone(int argc, char **argv, int *dfds)
 void
 taskdone(int *dfds, uintmax_t tid)
 {
-	int fd;
-	uintmax_t id;
-	FILE *fp;
 	DIR *dp;
+	uintmax_t id;
 	struct dirent *ent;
 
 	if ((dp = fdopendir(dfds[TODO])) == NULL)
 		die("fdopendir");
 	while ((ent = readdir(dp)) != NULL) {
-		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
-			continue;
-		if ((fd = openat(dfds[TODO], ent->d_name, O_RDONLY)) == -1)
-			die("openat: '%s'", ent->d_name);
-		if ((fp = fdopen(fd, "r")) == NULL)
-			die("fdopen: '%s'", ent->d_name);
-		if (fscanf(fp, "Task ID: %ju", &id) != 1) {
-			/* TODO: Make the program exit with EXIT_FAILURE if this
-			 * warning is issued.
-			 */
-			warnx("%s: Couldn't parse task ID", ent->d_name);
-			fclose(fp);
-		} else if (id == tid) {
-			fclose(fp);
+		if (sscanf(ent->d_name, "%ju", &id) == 1 && id == tid) {
 			if (renameat(dfds[TODO], ent->d_name,
-					dfds[DONE], ent->d_name) == -1)
+				     dfds[DONE], ent->d_name) == -1)
 				die("renameat: '%s'", ent->d_name);
 			return;
 		}
