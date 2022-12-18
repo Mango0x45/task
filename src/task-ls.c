@@ -5,6 +5,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -27,7 +28,7 @@ enum pipe_ends {
 
 static int  printbody(FILE *, int);
 static int  qsort_helper(const void *, const void *);
-static void lstasks(int, bool);
+static void lstasks(int, int, uintmax_t *, bool);
 static void outputlist(struct task_vector, int, bool);
 static void append(struct task_vector *, struct task);
 
@@ -35,7 +36,9 @@ void
 subcmdlist(int argc, char **argv)
 {
 	int opt;
+	char *p;
 	bool lflag = false;
+	uintmax_t id, *ids = NULL;
 	static struct option longopts[] = {
 		{"long", no_argument, NULL, 'l'},
 		{ NULL,  0,           NULL,  0 }
@@ -54,11 +57,28 @@ subcmdlist(int argc, char **argv)
 	}
 
 	argc -= optind, argv += optind;
-	lstasks(dfds[TODO], lflag);
+	if (argc != 0) {
+		ids = xmalloc(argc * sizeof(uintmax_t));
+		for (int i = 0; i < argc; i++) {
+			id = strtoumax(argv[i], &p, 10);
+			if (*argv[i] != '\0' && *p == '\0')
+				ids[i] = id;
+			else {
+				ids[i] = -1;
+				/* TODO: Make the program exit with EXIT_FAILURE
+				 * if this warning is issued.
+				 */
+				warnx("Invalid task ID: '%s'", argv[i]);
+			}
+		}
+	}
+
+	lstasks(dfds[TODO], argc, ids, lflag);
+	free(ids);
 }
 
 void
-lstasks(int dfd, bool lflag)
+lstasks(int dfd, int idcnt, uintmax_t *ids, bool lflag)
 {
 	DIR *dp;
 	struct dirent *ent;
@@ -86,7 +106,12 @@ lstasks(int dfd, bool lflag)
 			if (tsk.title[0] == '\0')
 				/* TODO: Same here as the above comment */
 				warnx("%s: Task title is empty", ent->d_name);
-			else
+			else if (ids != NULL) {
+				for (int i = 0; i < idcnt; i++) {
+					if (tsk.id == ids[i])
+						append(&vec, tsk);
+				}
+			} else
 				append(&vec, tsk);
 		}
 	}
