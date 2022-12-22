@@ -104,7 +104,7 @@ void
 usage(void)
 {
 	fprintf(stderr, "Usage: %s add [-e] [title]\n"
-	                "       %s ls [-l] [id ...]\n"
+	                "       %s ls [-adl] [id ...]\n"
 	                "       %s done id ...\n", argv0, argv0, argv0);
 	exit(EXIT_FAILURE);
 }
