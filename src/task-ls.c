@@ -128,11 +128,17 @@ lstasks(int dfd, int idcnt, uintmax_t *ids, bool lflag)
 void
 outputlist(struct task_vector vec, int dfd, bool lflag)
 {
+	bool tty = true;
 	int fd, fds[2];
 	pid_t pid;
 	size_t pad;
-	FILE *pager;
+	FILE *pager = stdout;
 	struct task tsk;
+
+	if (!isatty(STDOUT_FILENO)) {
+		tty = false;
+		goto not_a_tty;
+	}
 
 	if (pipe(fds) == -1)
 		die("pipe");
@@ -149,9 +155,11 @@ outputlist(struct task_vector vec, int dfd, bool lflag)
 	}
 
 	close(fds[READ]);
-	pad = uintmaxlen(vec.tasks[vec.len - 1].id);
 	if ((pager = fdopen(fds[WRITE], "w")) == NULL)
 		die("fdopen: Pipe to pager");
+
+not_a_tty:
+	pad = uintmaxlen(vec.tasks[vec.len - 1].id);
 	if (!lflag) {
 		for (size_t i = 0; i < vec.len; i++) {
 			tsk = vec.tasks[i];
@@ -163,11 +171,15 @@ outputlist(struct task_vector vec, int dfd, bool lflag)
 			tsk = vec.tasks[i];
 			if ((fd = openat(dfd, tsk.filename, O_RDONLY)) == -1)
 				die("openat: '%s'", tsk.filename);
-			fprintf(pager, "\033[1mTask Title:\033[0m "
-			               "\033[4m%s\033[0m\n"
-			               "\033[1mTask ID:\033[0m    "
-			               "\033[4m%ju\033[0m\n",
-			        tsk.title, tsk.id);
+			if (tty == true)
+				fprintf(pager, "\033[1mTask Title:\033[0m "
+				               "\033[4m%s\033[0m\n"
+				               "\033[1mTask ID:\033[0m    "
+				               "\033[4m%ju\033[0m\n",
+				        tsk.title, tsk.id);
+			else
+				printf("Task Title: %s\nTask ID:    %ju\n",
+				       tsk.title, tsk.id);
 			if (printbody(pager, fd) == -1)
 				warn("printbody: '%s'", tsk.filename);
 			if (i < vec.len - 1)
@@ -175,9 +187,12 @@ outputlist(struct task_vector vec, int dfd, bool lflag)
 			close(fd);
 		}
 	}
-	fclose(pager);
-	if (waitpid(pid, NULL, 0) == -1)
-		die("waitpid");
+
+	if (tty == true) {
+		fclose(pager);
+		if (waitpid(pid, NULL, 0) == -1)
+			die("waitpid");
+	}
 }
 
 int
