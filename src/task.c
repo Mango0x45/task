@@ -23,7 +23,6 @@ int dfds[FD_COUNT];
 const char *argv0;
 
 static void mkdatadirs(void);
-static long getpathmax(const char *);
 static void usage(void);
 
 int
@@ -99,21 +98,6 @@ mkdatadirs(void)
 
 	free(buf);
 	close(fd);
-}
-
-long
-getpathmax(const char *s)
-{
-	long pathmax;
-
-	errno = 0;
-	if ((pathmax = pathconf(s, _PC_PATH_MAX)) == -1) {
-		if (errno != 0)
-			die("pathconf");
-		return TASK_PATH_MAX;
-	}
-
-	return pathmax;
 }
 
 void

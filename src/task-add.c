@@ -24,7 +24,6 @@ static void      mktask_from_file(FILE *);
 static void      spawneditor(char *);
 static uintmax_t mktaskid(void);
 static char     *getpath(char *);
-static long      fgetnamemax(int);
 
 void
 subcmdadd(int argc, char **argv)
@@ -211,19 +210,4 @@ getpath(char *s)
 	path[namelen] = '\0';
 
 	return path;
-}
-
-long
-fgetnamemax(int fd)
-{
-	long namemax;
-
-	errno = 0;
-	if ((namemax = fpathconf(fd, _PC_NAME_MAX)) == -1) {
-		if (errno != 0)
-			die("fpathconf");
-		return TASK_NAME_MAX;
-	}
-
-	return namemax;
 }

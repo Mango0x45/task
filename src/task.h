@@ -4,9 +4,6 @@
 #define DONEDIR "done"
 #define TODODIR "todo"
 
-#define TASK_NAME_MAX 255
-#define TASK_PATH_MAX 4096
-
 enum fd_type {
 	DONE,
 	TODO,

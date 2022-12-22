@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "common.h"
 
@@ -92,4 +93,34 @@ uintmaxlen(uintmax_t n)
 	     : n < 100000000000000000ULL ? 17
 	     : n < 1000000000000000000ULL ? 18
 	     :                               19;
+}
+
+long
+fgetnamemax(int fd)
+{
+	long namemax;
+
+	errno = 0;
+	if ((namemax = fpathconf(fd, _PC_NAME_MAX)) == -1) {
+		if (errno != 0)
+			die("fpathconf");
+		return TASK_NAME_MAX;
+	}
+
+	return namemax;
+}
+
+long
+getpathmax(const char *s)
+{
+	long pathmax;
+
+	errno = 0;
+	if ((pathmax = pathconf(s, _PC_PATH_MAX)) == -1) {
+		if (errno != 0)
+			die("pathconf");
+		return TASK_PATH_MAX;
+	}
+
+	return pathmax;
 }
