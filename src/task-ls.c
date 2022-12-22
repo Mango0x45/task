@@ -37,15 +37,21 @@ subcmdlist(int argc, char **argv)
 {
 	int opt;
 	char *p;
-	bool lflag = false;
+	bool dflag, lflag;
 	uintmax_t id, *ids = NULL;
 	static struct option longopts[] = {
+		{"done", no_argument, NULL, 'd'},
 		{"long", no_argument, NULL, 'l'},
 		{ NULL,  0,           NULL,  0 }
 	};
 
-	while ((opt = getopt_long(argc, argv, "l", longopts, NULL)) != -1) {
+	dflag = lflag = false;
+
+	while ((opt = getopt_long(argc, argv, "dl", longopts, NULL)) != -1) {
 		switch (opt) {
+		case 'd':
+			dflag = true;
+			break;
 		case 'l':
 			lflag = true;
 			break;
@@ -73,7 +79,7 @@ subcmdlist(int argc, char **argv)
 		}
 	}
 
-	lstasks(dfds[TODO], argc, ids, lflag);
+	lstasks(dfds[dflag ? DONE : TODO], argc, ids, lflag);
 	free(ids);
 }
 
