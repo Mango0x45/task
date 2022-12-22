@@ -144,7 +144,7 @@ outputlist(struct task_vector vec, int dfd, bool lflag)
 		if (dup2(fds[READ], STDIN_FILENO) == -1)
 			die("dup2");
 		close(fds[READ]);
-		execlp("less", "less", "-FS", NULL);
+		execlp("less", "less", "-FSr", NULL);
 		die("execlp");
 	}
 
@@ -163,7 +163,10 @@ outputlist(struct task_vector vec, int dfd, bool lflag)
 			tsk = vec.tasks[i];
 			if ((fd = openat(dfd, tsk.filename, O_RDONLY)) == -1)
 				die("openat: '%s'", tsk.filename);
-			fprintf(pager, "Task Title: %s\nTask ID:    %ju\n",
+			fprintf(pager, "\033[1mTask Title:\033[0m "
+			               "\033[4m%s\033[0m\n"
+			               "\033[1mTask ID:\033[0m    "
+			               "\033[4m%ju\033[0m\n",
 			        tsk.title, tsk.id);
 			if (printbody(pager, fd) == -1)
 				warn("printbody: '%s'", tsk.filename);
