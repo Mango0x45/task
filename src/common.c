@@ -8,6 +8,15 @@
 
 #include "common.h"
 
+char *
+xstrdup(const char *s)
+{
+	char *r;
+	if ((r = strdup(s)) == NULL)
+		die("strdup");
+	return r;
+}
+
 void *
 xmalloc(size_t size)
 {

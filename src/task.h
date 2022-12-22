@@ -12,8 +12,10 @@ enum fd_type {
 };
 
 struct task {
+	int dfd;
 	uintmax_t id;
-	const char *title, *filename;
+	char *filename;
+	const char *title;
 };
 
 extern int dfds[FD_COUNT];
