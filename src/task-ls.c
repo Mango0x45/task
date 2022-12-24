@@ -21,7 +21,7 @@
 GEVECTOR_API(struct task, taskvec)
 GEVECTOR_IMPL(struct task, taskvec)
 
-bool aflag, dflag, lflag;
+bool aflag, dflag, lflag, sflag;
 
 enum pipe_ends {
 	READ,
@@ -41,13 +41,14 @@ subcmdlist(int argc, char **argv)
 	uintmax_t id, *ids = NULL;
 	struct taskvec tasks;
 	static struct option longopts[] = {
-		{"all",  no_argument, NULL, 'a'},
-		{"done", no_argument, NULL, 'd'},
-		{"long", no_argument, NULL, 'l'},
-		{ NULL,  0,           NULL,  0 }
+		{"all",     no_argument, NULL, 'a'},
+		{"done",    no_argument, NULL, 'd'},
+		{"long",    no_argument, NULL, 'l'},
+		{"special", no_argument, NULL, 's'},
+		{ NULL,     0,           NULL,  0 }
 	};
 
-	while ((opt = getopt_long(argc, argv, "adl", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "adls", longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'a':
 			aflag = true;
@@ -57,6 +58,9 @@ subcmdlist(int argc, char **argv)
 			break;
 		case 'l':
 			lflag = true;
+			break;
+		case 's':
+			sflag = true;
 			break;
 		default:
 			fprintf(stderr, "Usage: %s add [-adl] [id ...]\n",
@@ -195,7 +199,7 @@ not_a_tty:
 			if ((fd = openat(tsk.dfd, tsk.filename, O_RDONLY))
 					== -1)
 				die("openat: '%s'", tsk.filename);
-			if (tty == true)
+			if (tty == true || sflag)
 				fprintf(pager, "\033[1mTask Title:\033[0m "
 				               "\033[4m%s\033[0m\n"
 				               "\033[1mTask ID:\033[0m    "
