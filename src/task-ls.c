@@ -13,15 +13,15 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <gevector.h>
+
 #include "common.h"
 #include "task.h"
 
-bool aflag, dflag, lflag;
+GEVECTOR_API(struct task, taskvec)
+GEVECTOR_IMPL(struct task, taskvec)
 
-struct task_vector {
-	size_t bufsize, len;
-	struct task *tasks;
-};
+bool aflag, dflag, lflag;
 
 enum pipe_ends {
 	READ,
@@ -30,9 +30,8 @@ enum pipe_ends {
 
 static int  printbody(FILE *, int);
 static int  qsort_helper(const void *, const void *);
-static void queuetasks(struct task_vector *, int, int, uintmax_t *);
-static void outputlist(struct task_vector);
-static void append(struct task_vector *, struct task);
+static void queuetasks(struct taskvec *, int, int, uintmax_t *);
+static void outputlist(struct taskvec);
 
 void
 subcmdlist(int argc, char **argv)
@@ -40,10 +39,7 @@ subcmdlist(int argc, char **argv)
 	int opt;
 	char *p;
 	uintmax_t id, *ids = NULL;
-	struct task_vector vec = {
-		.len     = 0,
-		.bufsize = 16,
-	};
+	struct taskvec tasks;
 	static struct option longopts[] = {
 		{"all",  no_argument, NULL, 'a'},
 		{"done", no_argument, NULL, 'd'},
@@ -86,22 +82,23 @@ subcmdlist(int argc, char **argv)
 		}
 	}
 
-	vec.tasks = xmalloc(vec.bufsize * sizeof(struct task));
+	if (taskvec_new(&tasks, (size_t) argc, 0) == -1)
+		die("taskvec_new");
 	if (aflag || !dflag)
-		queuetasks(&vec, dfds[TODO], argc, ids);
+		queuetasks(&tasks, dfds[TODO], argc, ids);
 	if (aflag ||  dflag)
-		queuetasks(&vec, dfds[DONE], argc, ids);
+		queuetasks(&tasks, dfds[DONE], argc, ids);
 	free(ids);
 
-	qsort(vec.tasks, vec.len, sizeof(struct task), &qsort_helper);
+	qsort(tasks.items, tasks.size, sizeof(struct task), &qsort_helper);
 
-	if (vec.len > 0)
-		outputlist(vec);
-	free(vec.tasks);
+	if (tasks.size > 0)
+		outputlist(tasks);
+	free(tasks.items);
 }
 
 void
-queuetasks(struct task_vector *vec, int dfd, int idcnt, uintmax_t *ids)
+queuetasks(struct taskvec *tasks, int dfd, int idcnt, uintmax_t *ids)
 {
 	int ddfd;
 	DIR *dp;
@@ -115,34 +112,43 @@ queuetasks(struct task_vector *vec, int dfd, int idcnt, uintmax_t *ids)
 	while ((ent = readdir(dp)) != NULL) {
 		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
 			continue;
-		if (sscanf(ent->d_name, "%ju-", &tsk.id) != 1)
+		if (sscanf(ent->d_name, "%ju-", &tsk.id) != 1) {
 			/* TODO: Make the program exit with EXIT_FAILURE if this
 			 * warning is issued.
 			 */
 			warnx("%s: Couldn't parse task ID", ent->d_name);
-		else {
-			tsk.dfd      = dfd;
-			tsk.filename = ent->d_name;
-			tsk.title    = strchr(ent->d_name, '-') + 1;
-
-			if (tsk.title[0] == '\0')
-				/* TODO: Same here as the above comment */
-				warnx("%s: Task title is empty", ent->d_name);
-			else if (ids != NULL) {
-				for (int i = 0; i < idcnt; i++) {
-					if (tsk.id == ids[i])
-						append(vec, tsk);
-				}
-			} else
-				append(vec, tsk);
+			continue;
 		}
+
+		tsk.dfd = dfd;
+		tsk.title = strchr(ent->d_name, '-') + 1;
+
+		if (tsk.title[0] == '\0') {
+			/* TODO: Same here as the above comment */
+			warnx("%s: Task title is empty", ent->d_name);
+			continue;
+		}
+		if (ids != NULL) {
+			int i;
+			for (i = 0; i < idcnt; i++) {
+				if (tsk.id == ids[i])
+					break;
+			}
+			if (i == idcnt)
+				continue;
+		}
+
+		tsk.filename = xstrdup(ent->d_name);
+		tsk.title = strchr(tsk.filename, '-') + 1;
+		if (taskvec_append(tasks, tsk) == -1)
+			die("taskvec_append");
 	}
 
 	closedir(dp);
 }
 
 void
-outputlist(struct task_vector vec)
+outputlist(struct taskvec tasks)
 {
 	bool tty = true;
 	int fd, fds[2];
@@ -175,17 +181,17 @@ outputlist(struct task_vector vec)
 		die("fdopen: Pipe to pager");
 
 not_a_tty:
-	pad = uintmaxlen(vec.tasks[vec.len - 1].id);
+	pad = uintmaxlen(tasks.items[tasks.size - 1].id);
 	if (!lflag) {
-		for (size_t i = 0; i < vec.len; i++) {
-			tsk = vec.tasks[i];
+		for (size_t i = 0; i < tasks.size; i++) {
+			tsk = tasks.items[i];
 			fprintf(pager, "%*ju. %s\n",
 			       (int) pad, tsk.id, tsk.title);
 			free(tsk.filename);
 		}
 	} else {
-		for (size_t i = 0; i < vec.len; i++) {
-			tsk = vec.tasks[i];
+		for (size_t i = 0; i < tasks.size; i++) {
+			tsk = tasks.items[i];
 			if ((fd = openat(tsk.dfd, tsk.filename, O_RDONLY))
 					== -1)
 				die("openat: '%s'", tsk.filename);
@@ -200,7 +206,7 @@ not_a_tty:
 				       tsk.title, tsk.id);
 			if (printbody(pager, fd) == -1)
 				warn("printbody: '%s'", tsk.filename);
-			if (i < vec.len - 1)
+			if (i < tasks.size - 1)
 				fputc('\n', pager);
 			free(tsk.filename);
 			close(fd);
@@ -239,19 +245,6 @@ printbody(FILE *stream, int fd)
 	}
 
 	return nr == -1 ? -1 : 0;
-}
-
-void
-append(struct task_vector *vec, struct task tsk)
-{
-	if (vec->len == vec->bufsize) {
-		vec->bufsize *= 2;
-		vec->tasks = xrealloc(vec->tasks,
-		                      vec->bufsize * sizeof(struct task));
-	}
-	tsk.filename = xstrdup(tsk.filename);
-	tsk.title    =  strchr(tsk.filename, '-') + 1;
-	vec->tasks[vec->len++] = tsk;
 }
 
 int
