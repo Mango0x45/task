@@ -63,7 +63,7 @@ subcmdlist(int argc, char **argv)
 			sflag = true;
 			break;
 		default:
-			fprintf(stderr, "Usage: %s add [-adl] [id ...]\n",
+			fprintf(stderr, "Usage: %s ls [-adl] [id ...]\n",
 			        argv0);
 			exit(EXIT_FAILURE);
 		}
