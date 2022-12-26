@@ -18,6 +18,7 @@ struct task {
 	const char *title;
 };
 
+extern int rv;
 extern int dfds[FD_COUNT];
 extern const char *argv0;
 

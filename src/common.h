@@ -4,7 +4,8 @@
 #define TASK_NAME_MAX 255
 #define TASK_PATH_MAX 4096
 
-#define die(...) err(EXIT_FAILURE, __VA_ARGS__)
+#define die(...)    err(EXIT_FAILURE, __VA_ARGS__)
+#define ewarnx(...) do { rv = EXIT_FAILURE; warnx(__VA_ARGS__); } while (0)
 #define streq(x, y) (strcmp(x, y) == 0)
 
 char  *xstrdup(const char *);

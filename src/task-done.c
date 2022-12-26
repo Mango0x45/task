@@ -28,10 +28,7 @@ subcmddone(int argc, char **argv)
 		if (*argv[i] != '\0' && *p == '\0')
 			taskdone(id);
 		else
-			/* TODO: Make the program exit with EXIT_FAILURE if this
-			 * warning is issued.
-			 */
-			warnx("Invalid task ID: '%s'", argv[i]);
+			ewarnx("Invalid task ID: '%s'", argv[i]);
 	}
 }
 

@@ -78,10 +78,7 @@ subcmdlist(int argc, char **argv)
 				ids[i] = id;
 			else {
 				ids[i] = -1;
-				/* TODO: Make the program exit with EXIT_FAILURE
-				 * if this warning is issued.
-				 */
-				warnx("Invalid task ID: '%s'", argv[i]);
+				ewarnx("Invalid task ID: '%s'", argv[i]);
 			}
 		}
 	}
@@ -115,10 +112,7 @@ queuetasks(struct taskvec *tasks, int dfd, int idcnt, uintmax_t *ids)
 		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
 			continue;
 		if (sscanf(ent->d_name, "%ju-", &tsk.id) != 1) {
-			/* TODO: Make the program exit with EXIT_FAILURE if this
-			 * warning is issued.
-			 */
-			warnx("%s: Couldn't parse task ID", ent->d_name);
+			ewarnx("%s: Couldn't parse task ID", ent->d_name);
 			continue;
 		}
 
@@ -126,8 +120,7 @@ queuetasks(struct taskvec *tasks, int dfd, int idcnt, uintmax_t *ids)
 		tsk.title = strchr(ent->d_name, '-') + 1;
 
 		if (tsk.title[0] == '\0') {
-			/* TODO: Same here as the above comment */
-			warnx("%s: Task title is empty", ent->d_name);
+			ewarnx("%s: Task title is empty", ent->d_name);
 			continue;
 		}
 		if (ids != NULL) {

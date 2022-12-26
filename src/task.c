@@ -19,6 +19,7 @@
 
 #define D_FLAGS (O_RDONLY | O_DIRECTORY)
 
+int rv = EXIT_SUCCESS;
 int dfds[FD_COUNT];
 const char *argv0;
 
@@ -48,7 +49,7 @@ main(int argc, char *argv[])
 
 	close(dfds[DONE]);
 	close(dfds[TODO]);
-	return EXIT_SUCCESS;
+	return rv;
 }
 
 void
