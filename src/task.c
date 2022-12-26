@@ -38,10 +38,10 @@ main(int argc, char *argv[])
 	argc--, argv++;
 	if (streq(argv[0], "add"))
 		subcmdadd(argc, argv);
-	else if (streq(argv[0], "ls"))
-		subcmdlist(argc, argv);
 	else if (streq(argv[0], "done"))
 		subcmddone(argc, argv);
+	else if (streq(argv[0], "ls"))
+		subcmdlist(argc, argv);
 	else {
 		warnx("invalid subcommand -- '%s'", argv[0]);
 		usage();
@@ -105,7 +105,8 @@ void
 usage(void)
 {
 	fprintf(stderr, "Usage: %s add [-e] [title]\n"
-	                "       %s ls [-adls] [id ...]\n"
-	                "       %s done id ...\n", argv0, argv0, argv0);
+	                "       %s done id ...\n"
+	                "       %s ls [-adls] [id ...]\n",
+	        argv0, argv0, argv0);
 	exit(EXIT_FAILURE);
 }

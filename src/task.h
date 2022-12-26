@@ -23,7 +23,7 @@ extern int dfds[FD_COUNT];
 extern const char *argv0;
 
 void subcmdadd(int, char **);
-void subcmdlist(int, char **);
 void subcmddone(int, char **);
+void subcmdlist(int, char **);
 
 #endif /* !TASK_H */
