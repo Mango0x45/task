@@ -94,10 +94,8 @@ subcmdlist(int argc, char **argv)
 		queuetasks(&tasks, dfds[DONE], argc, ids);
 	free(ids);
 
-	qsort(tasks.items, tasks.size, sizeof(struct task), &qsort_helper);
-
-	if (tasks.size > 0)
-		outputlist(tasks);
+	qsort(tasks.items, tasks.length, sizeof(struct task), &qsort_helper);
+	outputlist(tasks);
 	free(tasks.items);
 }
 
@@ -160,6 +158,9 @@ outputlist(struct taskvec tasks)
 	size_t pad;
 	FILE *pager = stdout;
 	struct task tsk;
+
+	if (tasks.length == 0)
+		return;
 
 	if (!isatty(STDOUT_FILENO)) {
 		tty = false;
