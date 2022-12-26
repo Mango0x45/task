@@ -185,16 +185,16 @@ outputlist(struct taskvec tasks)
 		die("fdopen: Pipe to pager");
 
 not_a_tty:
-	pad = uintmaxlen(tasks.items[tasks.size - 1].id);
+	pad = uintmaxlen(tasks.items[tasks.length - 1].id);
 	if (!lflag) {
-		for (size_t i = 0; i < tasks.size; i++) {
+		for (size_t i = 0; i < tasks.length; i++) {
 			tsk = tasks.items[i];
 			fprintf(pager, "%*ju. %s\n",
 			       (int) pad, tsk.id, tsk.title);
 			free(tsk.filename);
 		}
 	} else {
-		for (size_t i = 0; i < tasks.size; i++) {
+		for (size_t i = 0; i < tasks.length; i++) {
 			tsk = tasks.items[i];
 			if ((fd = openat(tsk.dfd, tsk.filename, O_RDONLY))
 					== -1)
@@ -210,7 +210,7 @@ not_a_tty:
 				       tsk.title, tsk.id);
 			if (printbody(pager, fd) == -1)
 				warn("printbody: '%s'", tsk.filename);
-			if (i < tasks.size - 1)
+			if (i < tasks.length - 1)
 				fputc('\n', pager);
 			free(tsk.filename);
 			close(fd);
