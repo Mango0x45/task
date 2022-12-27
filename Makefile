@@ -12,11 +12,12 @@ PREFIX  = /usr/local
 DPREFIX = ${DESTDIR}${PREFIX}
 
 prog = task
-objs = src/common.o    \
-       src/task-add.o  \
-       src/task-done.o \
-       src/task-ls.o   \
-       src/task-tag.o  \
+objs = src/common.o     \
+       src/tag-vector.o \
+       src/task-add.o   \
+       src/task-done.o  \
+       src/task-ls.o    \
+       src/task-tag.o   \
        src/task.o
 
 all: ${prog}
@@ -24,6 +25,8 @@ ${prog}: ${objs}
 	${CC} ${CFLAGS} ${LDFLAGS} ${LDLIBS} -o $@ ${objs}
 
 src/common.o: src/common.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+src/tag-vector.o: src/tag-vector.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 src/task-add.o: src/task-add.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<

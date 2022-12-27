@@ -14,16 +14,13 @@
 #include <gevector.h>
 
 #include "common.h"
+#include "tag-vector.h"
 #include "task.h"
-
-GEVECTOR_API(char *, tagvec)
-GEVECTOR_IMPL(char *, tagvec)
 
 bool rflag;
 
 static void addtags(struct tagvec *, uintmax_t *, int);
 static void tagtask(struct tagvec *, char *, int);
-static void parsetags(struct tagvec *, char *);
 static void usage(void);
 
 void
@@ -70,7 +67,6 @@ subcmdtag(int argc, char **argv)
 void
 addtags(struct tagvec *vec, uintmax_t *ids, int idcnt)
 {
-	int dfd;
 	DIR *dp;
 	char *base, *start, *end;
 	uintmax_t id;
@@ -96,9 +92,7 @@ addtags(struct tagvec *vec, uintmax_t *ids, int idcnt)
 	}
 
 	for (int i = 0; i < FD_COUNT; i++) {
-		if ((dfd = dup(dfds[i])) == -1)
-			die("dup");
-		if ((dp = fdopendir(dfd)) == NULL)
+		if ((dp = fdopendir(dfds[i])) == NULL)
 			die("fdopendir");
 
 		while (errno = 0, (ent = readdir(dp)) != NULL) {
@@ -114,7 +108,6 @@ addtags(struct tagvec *vec, uintmax_t *ids, int idcnt)
 					tagtask(vec, ent->d_name, dfds[i]);
 			}
 		}
-
 		if (errno != 0)
 			die("readdir");
 
@@ -137,20 +130,6 @@ tagtask(struct tagvec *vec, char *filename, int ffd)
 
 		close(tfd);
 	}
-}
-
-void
-parsetags(struct tagvec *vec, char *tagstr)
-{
-	char *start, *end;
-
-	start = tagstr;
-	while ((end = strchr(start, ',')) != NULL) {
-		*end = '\0';
-		tagvec_append(vec, start);
-		start = end + 1;
-	}
-	tagvec_append(vec, start);
 }
 
 void

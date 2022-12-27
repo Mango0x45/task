@@ -7,7 +7,10 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <gevector.h>
+
 #include "common.h"
+#include "tag-vector.h"
 #include "task.h"
 
 char *

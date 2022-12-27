@@ -16,12 +16,13 @@
 #include <gevector.h>
 
 #include "common.h"
+#include "tag-vector.h"
 #include "task.h"
 
 GEVECTOR_API(struct task, taskvec)
 GEVECTOR_IMPL(struct task, taskvec)
 
-bool aflag, dflag, lflag, sflag;
+bool aflag, dflag, lflag, sflag, tflag;
 
 enum pipe_ends {
 	READ,
@@ -30,7 +31,9 @@ enum pipe_ends {
 
 static int  printbody(FILE *, int);
 static int  qsort_helper(const void *, const void *);
-static void queuetasks(struct taskvec *, int, int, uintmax_t *);
+static void queuetasks(struct taskvec *, struct tagvec *, int, uintmax_t *,
+                       int);
+static void queuetasks_helper(struct taskvec *, char *, int, uintmax_t *, int);
 static void outputlist(struct taskvec);
 
 void
@@ -39,15 +42,18 @@ subcmdlist(int argc, char **argv)
 	int opt;
 	uintmax_t *ids = NULL;
 	struct taskvec tasks;
+	const char *opts = "adlst:";
+	struct tagvec tags = { .items = NULL };
 	static struct option longopts[] = {
-		{"all",     no_argument, NULL, 'a'},
-		{"done",    no_argument, NULL, 'd'},
-		{"long",    no_argument, NULL, 'l'},
-		{"special", no_argument, NULL, 's'},
-		{ NULL,     0,           NULL,  0 }
+		{"all",     no_argument,       NULL, 'a'},
+		{"done",    no_argument,       NULL, 'd'},
+		{"long",    no_argument,       NULL, 'l'},
+		{"special", no_argument,       NULL, 's'},
+		{"tags",    required_argument, NULL, 't'},
+		{ NULL,     0,                 NULL,  0 }
 	};
 
-	while ((opt = getopt_long(argc, argv, "adls", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, opts, longopts, NULL)) != -1) {
 		switch (opt) {
 		case 'a':
 			aflag = true;
@@ -61,8 +67,17 @@ subcmdlist(int argc, char **argv)
 		case 's':
 			sflag = true;
 			break;
+		case 't':
+			if (!tflag) {
+				if (tagvec_new(&tags, 0, 0) == -1)
+					die("tagvec_new");
+				tflag = true;
+			}
+			parsetags(&tags, optarg);
+			break;
 		default:
-			fprintf(stderr, "Usage: %s ls [-adls] [id ...]\n",
+			fprintf(stderr,
+			        "Usage: %s ls [-adls] [-t tags] [id ...]\n",
 			        argv0);
 			exit(EXIT_FAILURE);
 		}
@@ -75,31 +90,47 @@ subcmdlist(int argc, char **argv)
 	if (taskvec_new(&tasks, (size_t) argc, 0) == -1)
 		die("taskvec_new");
 	if (aflag || !dflag)
-		queuetasks(&tasks, dfds[TODO], argc, ids);
+		queuetasks(&tasks, &tags, dfds[TODO], ids, argc);
 	if (aflag ||  dflag)
-		queuetasks(&tasks, dfds[DONE], argc, ids);
+		queuetasks(&tasks, &tags, dfds[DONE], ids, argc);
 	free(ids);
 
 	qsort(tasks.items, tasks.length, sizeof(struct task), &qsort_helper);
 	outputlist(tasks);
 	free(tasks.items);
+	free(tags.items);
 }
 
 void
-queuetasks(struct taskvec *tasks, int dfd, int idcnt, uintmax_t *ids)
+queuetasks(struct taskvec *tasks, struct tagvec *tags, int dfd, uintmax_t *ids,
+           int idcnt)
 {
-	int ddfd;
+	if (tags->items == NULL)
+		queuetasks_helper(tasks, ".", dfd, ids, idcnt);
+	else for (size_t i = 0; i < tags->length; i++)
+		queuetasks_helper(tasks, tags->items[i], dfd, ids, idcnt);
+}
+
+void
+queuetasks_helper(struct taskvec *tasks, char *dirpath, int dfd, uintmax_t *ids,
+                  int idcnt)
+{
+	int fd;
 	DIR *dp;
 	struct dirent *ent;
 	struct task tsk;
 
-	if ((ddfd = dup(dfd)) == -1)
-		die("dup");
-	if ((dp = fdopendir(ddfd)) == NULL)
+	if ((fd = openat(dfd, dirpath, D_FLAGS)) == -1)
+		die("openat: '%s'", dirpath);
+	if ((dp = fdopendir(fd)) == NULL)
 		die("fdopendir");
 	while ((ent = readdir(dp)) != NULL) {
-		if (ent->d_type == DT_DIR)
+		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
 			continue;
+		if (ent->d_type == DT_DIR) {
+			queuetasks_helper(tasks, ent->d_name, fd, ids, idcnt);
+			continue;
+		}
 		if (sscanf(ent->d_name, "%ju-", &tsk.id) != 1) {
 			ewarnx("%s: Couldn't parse task ID", ent->d_name);
 			continue;
