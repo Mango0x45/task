@@ -8,14 +8,15 @@
 #define ewarnx(...) do { rv = EXIT_FAILURE; warnx(__VA_ARGS__); } while (0)
 #define streq(x, y) (strcmp(x, y) == 0)
 
-char  *xstrdup(const char *);
-void  *xmalloc(size_t);
-void  *xrealloc(void *, size_t);
-void  *xcalloc(size_t, size_t);
-void   errtoolong(const char *, ...);
-char  *strstrip(char *);
-size_t uintmaxlen(uintmax_t);
-long   fgetnamemax(int);
-long   getpathmax(const char *);
+char      *xstrdup(const char *);
+void      *xmalloc(size_t);
+void      *xrealloc(void *, size_t);
+void      *xcalloc(size_t, size_t);
+void       errtoolong(const char *, ...);
+char      *strstrip(char *);
+size_t     uintmaxlen(uintmax_t);
+long       fgetnamemax(int);
+long       getpathmax(const char *);
+uintmax_t *parseids(char **, int);
 
 #endif /* !COMMON_H */

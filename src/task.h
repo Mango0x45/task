@@ -1,6 +1,8 @@
 #ifndef TASK_H
 #define TASK_H
 
+#define D_FLAGS (O_RDONLY | O_DIRECTORY)
+
 #define DONEDIR "done"
 #define TODODIR "todo"
 
@@ -25,5 +27,6 @@ extern const char *argv0;
 void subcmdadd(int, char **);
 void subcmddone(int, char **);
 void subcmdlist(int, char **);
+void subcmdtag(int, char **);
 
 #endif /* !TASK_H */

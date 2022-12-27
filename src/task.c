@@ -17,8 +17,6 @@
 #include "common.h"
 #include "task.h"
 
-#define D_FLAGS (O_RDONLY | O_DIRECTORY)
-
 int rv = EXIT_SUCCESS;
 int dfds[FD_COUNT];
 const char *argv0;
@@ -42,6 +40,8 @@ main(int argc, char *argv[])
 		subcmddone(argc, argv);
 	else if (streq(argv[0], "ls"))
 		subcmdlist(argc, argv);
+	else if (streq(argv[0], "tag"))
+		subcmdtag(argc, argv);
 	else {
 		warnx("invalid subcommand -- '%s'", argv[0]);
 		usage();
@@ -106,7 +106,8 @@ usage(void)
 {
 	fprintf(stderr, "Usage: %s add [-e] [title]\n"
 	                "       %s done id ...\n"
-	                "       %s ls [-adls] [id ...]\n",
-	        argv0, argv0, argv0);
+	                "       %s ls [-adls] [id ...]\n"
+	                "       %s tag [-r] tags id ...\n",
+	        argv0, argv0, argv0, argv0);
 	exit(EXIT_FAILURE);
 }

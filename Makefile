@@ -4,7 +4,8 @@ CC       = cc
 CFLAGS   = -Wall -Wextra -Wpedantic -Werror      \
            -march=native -mtune=native -O3 -flto \
            -pipe
-CPPFLAGS = `./genflags --cflags` -DLIBBSD_NETBSD_VIS
+CPPFLAGS = `./genflags --cflags` -D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=200809L \
+	   -DLIBBSD_NETBSD_VIS
 LDLIBS   = `./genflags --libs`
 
 PREFIX  = /usr/local
@@ -15,6 +16,7 @@ objs = src/common.o    \
        src/task-add.o  \
        src/task-done.o \
        src/task-ls.o   \
+       src/task-tag.o  \
        src/task.o
 
 all: ${prog}
@@ -28,6 +30,8 @@ src/task-add.o: src/task-add.c
 src/task-done.o: src/task-done.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 src/task-ls.o: src/task-ls.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+src/task-tag.o: src/task-tag.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 src/task.o: src/task.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<

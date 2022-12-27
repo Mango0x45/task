@@ -1,12 +1,14 @@
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "common.h"
+#include "task.h"
 
 char *
 xstrdup(const char *s)
@@ -132,4 +134,24 @@ getpathmax(const char *s)
 	}
 
 	return pathmax;
+}
+
+uintmax_t *
+parseids(char **raw, int cnt)
+{
+	char *p;
+	uintmax_t id, *ids;
+
+	ids = xmalloc(cnt * sizeof(uintmax_t));
+	for (int i = 0; i < cnt; i++) {
+		id = strtoumax(raw[i], &p, 10);
+		if (*raw[i] != '\0' && *p == '\0')
+			ids[i] = id;
+		else {
+			ids[i] = -1;
+			ewarnx("Invalid task ID: '%s'", raw[i]);
+		}
+	}
+
+	return ids;
 }

@@ -37,8 +37,7 @@ void
 subcmdlist(int argc, char **argv)
 {
 	int opt;
-	char *p;
-	uintmax_t id, *ids = NULL;
+	uintmax_t *ids = NULL;
 	struct taskvec tasks;
 	static struct option longopts[] = {
 		{"all",     no_argument, NULL, 'a'},
@@ -70,18 +69,8 @@ subcmdlist(int argc, char **argv)
 	}
 
 	argc -= optind, argv += optind;
-	if (argc != 0) {
-		ids = xmalloc(argc * sizeof(uintmax_t));
-		for (int i = 0; i < argc; i++) {
-			id = strtoumax(argv[i], &p, 10);
-			if (*argv[i] != '\0' && *p == '\0')
-				ids[i] = id;
-			else {
-				ids[i] = -1;
-				ewarnx("Invalid task ID: '%s'", argv[i]);
-			}
-		}
-	}
+	if (argc != 0)
+		ids = parseids(argv, argc);
 
 	if (taskvec_new(&tasks, (size_t) argc, 0) == -1)
 		die("taskvec_new");
@@ -109,7 +98,7 @@ queuetasks(struct taskvec *tasks, int dfd, int idcnt, uintmax_t *ids)
 	if ((dp = fdopendir(ddfd)) == NULL)
 		die("fdopendir");
 	while ((ent = readdir(dp)) != NULL) {
-		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
+		if (ent->d_type == DT_DIR)
 			continue;
 		if (sscanf(ent->d_name, "%ju-", &tsk.id) != 1) {
 			ewarnx("%s: Couldn't parse task ID", ent->d_name);
