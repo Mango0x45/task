@@ -1,3 +1,6 @@
 #!/bin/sh
 
-[ "`uname`" = Linux ] && pkg-config $1 libbsd-overlay
+[ "`uname`" = Linux ] && {
+	[ $1 == --cflags ] && echo -n '-D_GNU_SOURCE '
+	pkg-config $1 libbsd-overlay
+}

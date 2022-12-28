@@ -19,6 +19,7 @@
 
 bool rflag;
 
+static void listtags(void);
 static void addtags(struct tagvec *, uintmax_t *, int);
 static void tagtask(struct tagvec *, char *, int);
 static void usage(void);
@@ -33,6 +34,11 @@ subcmdtag(int argc, char **argv)
 		{"remove", no_argument, NULL, 'r'},
 		{ NULL,    no_argument, NULL,  0 }
 	};
+
+	if (argc == 1) {
+		listtags();
+		return;
+	}
 
 	while ((opt = getopt_long(argc, argv, "r", longopts, NULL)) != -1) {
 		switch (opt) {
@@ -62,6 +68,22 @@ subcmdtag(int argc, char **argv)
 	addtags(&tags, ids, argc);
 	free(ids);
 	free(tags.items);
+}
+
+void
+listtags(void)
+{
+	struct tagvec vec;
+
+	if (tagvec_new(&vec, 0, 0) == -1)
+		die("tagvec_new");
+	iterdir(&vec, dfds[DONE]);
+	qsort(vec.items, vec.length, sizeof(char *), voidcoll);
+	for (size_t i = 0; i < vec.length; i++) {
+		puts(vec.items[i]);
+		free(vec.items[i]);
+	}
+	free(vec.items);
 }
 
 void
@@ -135,7 +157,7 @@ tagtask(struct tagvec *vec, char *filename, int ffd)
 void
 usage(void)
 {
-	fprintf(stderr, "Usage: %s tag [-r] tags id ...\n",
+	fprintf(stderr, "Usage: %s tag [[-r] tags id ...]\n",
 		argv0);
 	exit(EXIT_FAILURE);
 }

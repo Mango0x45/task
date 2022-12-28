@@ -1,8 +1,3 @@
-/* On Linux we define this so that we can get the O_PATH flag for open(2) */
-#ifdef __linux__
-	#define _GNU_SOURCE
-#endif
-
 #include <sys/stat.h>
 
 #include <err.h>
@@ -107,7 +102,7 @@ usage(void)
 	fprintf(stderr, "Usage: %s add [-e] [title]\n"
 	                "       %s done id ...\n"
 	                "       %s ls [-adls] [id ...]\n"
-	                "       %s tag [-r] tags id ...\n",
+	                "       %s tag [[-r] tags id ...]\n",
 	        argv0, argv0, argv0, argv0);
 	exit(EXIT_FAILURE);
 }

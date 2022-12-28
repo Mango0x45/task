@@ -1,6 +1,10 @@
+#include <sys/types.h>
+
 #include <ctype.h>
+#include <dirent.h>
 #include <err.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -12,6 +16,8 @@
 #include "common.h"
 #include "tag-vector.h"
 #include "task.h"
+
+static void iterdir_helper(struct tagvec *, int, int, const char *);
 
 char *
 xstrdup(const char *s)
@@ -47,6 +53,12 @@ xcalloc(size_t nmemb, size_t size)
 	if ((r = calloc(nmemb, size)) == NULL)
 		die("calloc");
 	return r;
+}
+
+int
+voidcoll(const void *a, const void *b)
+{
+	return strcoll(*(const char **) a, *(const char **) b);
 }
 
 void
@@ -157,4 +169,49 @@ parseids(char **raw, int cnt)
 	}
 
 	return ids;
+}
+
+void
+iterdir(struct tagvec *vec, int fd)
+{
+	iterdir_helper(vec, fd, fd, ".");
+}
+
+void
+iterdir_helper(struct tagvec *vec, int bfd, int fd, const char *base)
+{
+	int nfd;
+	DIR *dp;
+	char *buf;
+	size_t len;
+	struct dirent *ent;
+
+	if ((dp = fdopendir(fd)) == NULL) {
+		ewarn("fdopendir: '%s'", base);
+		return;
+	}
+	rewinddir(dp);
+	while (errno = 0, (ent = readdir(dp)) != NULL) {
+		if (ent->d_type != DT_DIR || streq(ent->d_name, ".")
+				|| streq(ent->d_name, ".."))
+			continue;
+		if (streq(base, ".")) {
+			buf = xstrdup(ent->d_name);
+			tagvec_append(vec, buf);
+		} else {
+			len = strlen(ent->d_name) + strlen(base) + 2;
+			buf = xmalloc(len);
+			sprintf(buf, "%s/%s", base, ent->d_name);
+			tagvec_append(vec, buf);
+		}
+		if ((nfd = openat(bfd, buf, D_FLAGS)) == -1)
+			ewarn("openat: '%s'", buf);
+		else {
+			iterdir_helper(vec, bfd, nfd, buf);
+			close(nfd);
+		}
+	}
+	if (errno != 0)
+		ewarn("readdir: '%s'", base);
+	closedir(dp);
 }
