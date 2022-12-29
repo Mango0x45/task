@@ -21,6 +21,7 @@ bool rflag;
 
 static void listtags(void);
 static void addtags(struct tagvec *, uintmax_t *, int);
+static void removetags(struct tagvec *, uintmax_t *, int);
 static void tagtask(struct tagvec *, char *, int);
 static void usage(void);
 
@@ -65,7 +66,7 @@ subcmdtag(int argc, char **argv)
 	}
 
 	ids = parseids(++argv, --argc);
-	addtags(&tags, ids, argc);
+	(rflag ? removetags : addtags)(&tags, ids, argc);
 	free(ids);
 	free(tags.items);
 }
@@ -135,6 +136,51 @@ addtags(struct tagvec *vec, uintmax_t *ids, int idcnt)
 
 		closedir(dp);
 	}
+}
+
+void
+removetags(struct tagvec *vec, uintmax_t *ids, int idcnt)
+{
+	DIR *dp;
+	char *pathbuf;
+	long pathmax;
+	uintmax_t id;
+	struct dirent *ent;
+
+	pathmax = getpathmax("/");
+	pathbuf = xmalloc(pathmax + 1);
+	for (int i = 0; i < FD_COUNT; i++) {
+		fchdir(dfds[i]);
+
+		for (size_t j = 0; j < vec->length; j++) {
+			if ((dp = opendir(vec->items[j])) == NULL)
+				die("opendir: '%s'", vec->items[j]);
+
+			while (errno = 0, (ent = readdir(dp)) != NULL) {
+				if (ent->d_type == DT_DIR)
+					continue;
+				if (sscanf(ent->d_name, "%ju-", &id) != 1) {
+					ewarnx("%s: Couldn't parse task ID",
+					       ent->d_name);
+					continue;
+				}
+				for (int k = 0; k < idcnt; k++) {
+					if (ids[k] != id)
+						continue;
+					sprintf(pathbuf, "%s/%s", vec->items[j],
+					        ent->d_name);
+					if (unlink(pathbuf) == -1)
+						ewarn("unlink: '%s'", pathbuf);
+				}
+			}
+			if (errno != 0)
+				die("readdir");
+
+			closedir(dp);
+		}
+	}
+
+	free(pathbuf);
 }
 
 void
