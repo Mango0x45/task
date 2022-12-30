@@ -154,10 +154,16 @@ queuetasks_helper(struct taskvec *tasks, char *dirpath, int dfd, uintmax_t *ids,
 				continue;
 		}
 
+		for (size_t i = 0; i < tasks->length; i++) {
+			if (tasks->items[i].id == tsk.id)
+				goto duplicate;
+		}
+
 		tsk.filename = xstrdup(ent->d_name);
 		tsk.title = strchr(tsk.filename, '-') + 1;
 		if (taskvec_append(tasks, tsk) == -1)
 			die("taskvec_append");
+duplicate:;
 	}
 	if (errno != 0)
 		die("readdir");
