@@ -3,6 +3,7 @@
 
 #include <dirent.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
 #include <inttypes.h>
@@ -124,7 +125,7 @@ queuetasks_helper(struct taskvec *tasks, char *dirpath, int dfd, uintmax_t *ids,
 		die("openat: '%s'", dirpath);
 	if ((dp = fdopendir(fd)) == NULL)
 		die("fdopendir");
-	while ((ent = readdir(dp)) != NULL) {
+	while (errno = 0, (ent = readdir(dp)) != NULL) {
 		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
 			continue;
 		if (ent->d_type == DT_DIR) {
@@ -158,6 +159,8 @@ queuetasks_helper(struct taskvec *tasks, char *dirpath, int dfd, uintmax_t *ids,
 		if (taskvec_append(tasks, tsk) == -1)
 			die("taskvec_append");
 	}
+	if (errno != 0)
+		die("readdir");
 
 	closedir(dp);
 }
