@@ -34,7 +34,8 @@ static int  printbody(FILE *, int);
 static int  qsort_helper(const void *, const void *);
 static void queuetasks(struct taskvec *, struct tagvec *, int, uintmax_t *,
                        int);
-static void queuetasks_helper(struct taskvec *, char *, int, uintmax_t *, int);
+static void queuetasks_helper(struct taskvec *, char *, int, int, uintmax_t *,
+                              int);
 static void outputlist(struct taskvec);
 
 void
@@ -107,14 +108,14 @@ queuetasks(struct taskvec *tasks, struct tagvec *tags, int dfd, uintmax_t *ids,
            int idcnt)
 {
 	if (tags->items == NULL)
-		queuetasks_helper(tasks, ".", dfd, ids, idcnt);
+		queuetasks_helper(tasks, ".", dfd, dfd, ids, idcnt);
 	else for (size_t i = 0; i < tags->length; i++)
-		queuetasks_helper(tasks, tags->items[i], dfd, ids, idcnt);
+		queuetasks_helper(tasks, tags->items[i], dfd, dfd, ids, idcnt);
 }
 
 void
-queuetasks_helper(struct taskvec *tasks, char *dirpath, int dfd, uintmax_t *ids,
-                  int idcnt)
+queuetasks_helper(struct taskvec *tasks, char *dirpath, int bfd, int dfd,
+                  uintmax_t *ids, int idcnt)
 {
 	int fd;
 	DIR *dp;
@@ -129,7 +130,8 @@ queuetasks_helper(struct taskvec *tasks, char *dirpath, int dfd, uintmax_t *ids,
 		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
 			continue;
 		if (ent->d_type == DT_DIR) {
-			queuetasks_helper(tasks, ent->d_name, fd, ids, idcnt);
+			queuetasks_helper(tasks, ent->d_name, bfd, fd, ids,
+			                  idcnt);
 			continue;
 		}
 		if (sscanf(ent->d_name, "%ju-", &tsk.id) != 1) {
@@ -137,7 +139,7 @@ queuetasks_helper(struct taskvec *tasks, char *dirpath, int dfd, uintmax_t *ids,
 			continue;
 		}
 
-		tsk.dfd = dfd;
+		tsk.dfd = bfd;
 		tsk.title = strchr(ent->d_name, '-') + 1;
 
 		if (tsk.title[0] == '\0') {
