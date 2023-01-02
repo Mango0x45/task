@@ -11,26 +11,28 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <geset.h>
 #include <gevector.h>
 
 #include "common.h"
 #include "tag-vector.h"
 #include "task.h"
+#include "umax-set.h"
 
 bool rflag;
 
 static void listtags(void);
-static void addtags(struct tagvec *, uintmax_t *, int);
-static void removetags(struct tagvec *, uintmax_t *, int);
-static void tagtask(struct tagvec *, char *, int);
+static void addtags(tagvec_t *, umaxset_t *);
+static void removetags(tagvec_t *, umaxset_t *);
+static void tagtask(tagvec_t *, char *, int);
 static void usage(void);
 
 void
 subcmdtag(int argc, char **argv)
 {
 	int opt;
-	uintmax_t *ids;
-	struct tagvec tags;
+	umaxset_t ids = {0};
+	tagvec_t tags;
 	static struct option longopts[] = {
 		{"remove", no_argument, NULL, 'r'},
 		{ NULL,    no_argument, NULL,  0 }
@@ -58,45 +60,48 @@ subcmdtag(int argc, char **argv)
 	if (tagvec_new(&tags, 0, 0) == -1)
 		die("tagvec_new");
 	parsetags(&tags, *argv);
-	for (size_t i = 0; i < tags.length; i++) {
-		if (*tags.items[i] == '\0') {
+	for (size_t i = 0; i < tags.len; i++) {
+		if (*tags.data[i] == '\0') {
 			ewarnx("Empty tag provided");
-			tags.items[i] = NULL;
+			tags.data[i] = NULL;
 		}
 	}
 
-	ids = parseids(++argv, --argc);
-	(rflag ? removetags : addtags)(&tags, ids, argc);
-	free(ids);
-	free(tags.items);
+	argv++, argc--;
+	if (umaxset_new(&ids, argc, 0) == -1)
+		die("umaxset_new");
+	parseids(&ids, argv, argc);
+	(rflag ? removetags : addtags)(&tags, &ids);
+	umaxset_free(&ids);
+	free(tags.data);
 }
 
 void
 listtags(void)
 {
-	struct tagvec vec;
+	tagvec_t vec;
 
 	if (tagvec_new(&vec, 0, 0) == -1)
 		die("tagvec_new");
 	iterdir(&vec, dfds[DONE]);
-	qsort(vec.items, vec.length, sizeof(char *), voidcoll);
-	for (size_t i = 0; i < vec.length; i++) {
-		puts(vec.items[i]);
-		free(vec.items[i]);
+	qsort(vec.data, vec.len, sizeof(char *), voidcoll);
+	for (size_t i = 0; i < vec.len; i++) {
+		puts(vec.data[i]);
+		free(vec.data[i]);
 	}
-	free(vec.items);
+	free(vec.data);
 }
 
 void
-addtags(struct tagvec *vec, uintmax_t *ids, int idcnt)
+addtags(tagvec_t *vec, umaxset_t *ids)
 {
 	DIR *dp;
 	char *base, *start, *end;
 	uintmax_t id;
 	struct dirent *ent;
 
-	for (size_t i = 0; i < vec->length; i++) {
-		base = start = vec->items[i];
+	for (size_t i = 0; i < vec->len; i++) {
+		base = start = vec->data[i];
 		while ((end = strchr(start, '/')) != NULL) {
 			*end = '\0';
 			if (mkdirat(dfds[DONE], base, 0777) == -1
@@ -126,10 +131,8 @@ addtags(struct tagvec *vec, uintmax_t *ids, int idcnt)
 				       ent->d_name);
 				continue;
 			}
-			for (int j = 0; j < idcnt; j++) {
-				if (ids[j] == id)
-					tagtask(vec, ent->d_name, dfds[i]);
-			}
+			if (umaxset_has(ids, id))
+				tagtask(vec, ent->d_name, dfds[i]);
 		}
 		if (errno != 0)
 			die("readdir");
@@ -139,7 +142,7 @@ addtags(struct tagvec *vec, uintmax_t *ids, int idcnt)
 }
 
 void
-removetags(struct tagvec *vec, uintmax_t *ids, int idcnt)
+removetags(tagvec_t *vec, umaxset_t *ids)
 {
 	DIR *dp;
 	char *pathbuf;
@@ -152,9 +155,9 @@ removetags(struct tagvec *vec, uintmax_t *ids, int idcnt)
 	for (int i = 0; i < FD_COUNT; i++) {
 		fchdir(dfds[i]);
 
-		for (size_t j = 0; j < vec->length; j++) {
-			if ((dp = opendir(vec->items[j])) == NULL)
-				die("opendir: '%s'", vec->items[j]);
+		for (size_t j = 0; j < vec->len; j++) {
+			if ((dp = opendir(vec->data[j])) == NULL)
+				die("opendir: '%s'", vec->data[j]);
 
 			while (errno = 0, (ent = readdir(dp)) != NULL) {
 				if (ent->d_type == DT_DIR)
@@ -164,10 +167,8 @@ removetags(struct tagvec *vec, uintmax_t *ids, int idcnt)
 					       ent->d_name);
 					continue;
 				}
-				for (int k = 0; k < idcnt; k++) {
-					if (ids[k] != id)
-						continue;
-					sprintf(pathbuf, "%s/%s", vec->items[j],
+				if (umaxset_has(ids, id)) {
+					sprintf(pathbuf, "%s/%s", vec->data[j],
 					        ent->d_name);
 					if (unlink(pathbuf) == -1)
 						ewarn("unlink: '%s'", pathbuf);
@@ -184,13 +185,13 @@ removetags(struct tagvec *vec, uintmax_t *ids, int idcnt)
 }
 
 void
-tagtask(struct tagvec *vec, char *filename, int ffd)
+tagtask(tagvec_t *vec, char *filename, int ffd)
 {
 	int tfd;
 
-	for (size_t i = 0; i < vec->length; i++) {
-		if ((tfd = openat(ffd, vec->items[i], D_FLAGS)) == -1)
-			die("openat: '%s'", vec->items[i]);
+	for (size_t i = 0; i < vec->len; i++) {
+		if ((tfd = openat(ffd, vec->data[i], D_FLAGS)) == -1)
+			die("openat: '%s'", vec->data[i]);
 
 		if (linkat(ffd, filename, tfd, filename, 0) == -1
 				&& errno != EEXIST)

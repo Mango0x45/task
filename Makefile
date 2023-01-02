@@ -18,7 +18,8 @@ objs = src/common.o     \
        src/task-done.o  \
        src/task-ls.o    \
        src/task-tag.o   \
-       src/task.o
+       src/task.o       \
+       src/umax-set.o
 
 all: ${prog}
 ${prog}: ${objs}
@@ -37,6 +38,8 @@ src/task-ls.o: src/task-ls.c
 src/task-tag.o: src/task-tag.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 src/task.o: src/task.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+src/umax-set.o: src/umax-set.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
 clean:

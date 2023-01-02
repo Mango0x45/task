@@ -14,14 +14,15 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <geset.h>
 #include <gevector.h>
 
 #include "common.h"
 #include "tag-vector.h"
 #include "task.h"
+#include "umax-set.h"
 
-GEVECTOR_API(struct task, taskvec)
-GEVECTOR_IMPL(struct task, taskvec)
+GEVECTOR_DEF(struct task, taskvec)
 
 bool aflag, dflag, lflag, sflag, tflag;
 
@@ -32,20 +33,18 @@ enum pipe_ends {
 
 static int  printbody(FILE *, int);
 static int  qsort_helper(const void *, const void *);
-static void queuetasks(struct taskvec *, struct tagvec *, int, uintmax_t *,
-                       int);
-static void queuetasks_helper(struct taskvec *, char *, int, int, uintmax_t *,
-                              int);
-static void outputlist(struct taskvec);
+static void queuetasks(taskvec_t *, tagvec_t *, int, umaxset_t *, int);
+static void queuetasks_helper(taskvec_t *, char *, int, int, umaxset_t *, int);
+static void outputlist(taskvec_t);
 
 void
 subcmdlist(int argc, char **argv)
 {
 	int opt;
-	uintmax_t *ids = NULL;
-	struct taskvec tasks;
+	umaxset_t ids = {0};
+	taskvec_t tasks;
+	tagvec_t tags = { .data = NULL };
 	const char *opts = "adlst:";
-	struct tagvec tags = { .items = NULL };
 	static struct option longopts[] = {
 		{"all",     no_argument,       NULL, 'a'},
 		{"done",    no_argument,       NULL, 'd'},
@@ -86,36 +85,39 @@ subcmdlist(int argc, char **argv)
 	}
 
 	argc -= optind, argv += optind;
-	if (argc != 0)
-		ids = parseids(argv, argc);
+	if (argc != 0) {
+		if (umaxset_new(&ids, argc, 0) == -1)
+			die("umaxset_new");
+		parseids(&ids, argv, argc);
+	}
 
 	if (taskvec_new(&tasks, (size_t) argc, 0) == -1)
 		die("taskvec_new");
 	if (aflag || !dflag)
-		queuetasks(&tasks, &tags, dfds[TODO], ids, argc);
+		queuetasks(&tasks, &tags, dfds[TODO], &ids, argc);
 	if (aflag ||  dflag)
-		queuetasks(&tasks, &tags, dfds[DONE], ids, argc);
-	free(ids);
+		queuetasks(&tasks, &tags, dfds[DONE], &ids, argc);
 
-	qsort(tasks.items, tasks.length, sizeof(struct task), &qsort_helper);
+	umaxset_free(&ids);
+
+	qsort(tasks.data, tasks.len, sizeof(struct task), &qsort_helper);
 	outputlist(tasks);
-	free(tasks.items);
-	free(tags.items);
+	free(tasks.data);
+	free(tags.data);
 }
 
 void
-queuetasks(struct taskvec *tasks, struct tagvec *tags, int dfd, uintmax_t *ids,
-           int idcnt)
+queuetasks(taskvec_t *tasks, tagvec_t *tags, int dfd, umaxset_t *ids, int idcnt)
 {
-	if (tags->items == NULL)
+	if (tags->data == NULL)
 		queuetasks_helper(tasks, ".", dfd, dfd, ids, idcnt);
-	else for (size_t i = 0; i < tags->length; i++)
-		queuetasks_helper(tasks, tags->items[i], dfd, dfd, ids, idcnt);
+	else for (size_t i = 0; i < tags->len; i++)
+		queuetasks_helper(tasks, tags->data[i], dfd, dfd, ids, idcnt);
 }
 
 void
-queuetasks_helper(struct taskvec *tasks, char *dirpath, int bfd, int dfd,
-                  uintmax_t *ids, int idcnt)
+queuetasks_helper(taskvec_t *tasks, char *dirpath, int bfd, int dfd,
+                  umaxset_t *ids, int idcnt)
 {
 	int fd;
 	DIR *dp;
@@ -146,25 +148,18 @@ queuetasks_helper(struct taskvec *tasks, char *dirpath, int bfd, int dfd,
 			ewarnx("%s: Task title is empty", ent->d_name);
 			continue;
 		}
-		if (ids != NULL) {
-			int i;
-			for (i = 0; i < idcnt; i++) {
-				if (tsk.id == ids[i])
-					break;
-			}
-			if (i == idcnt)
-				continue;
-		}
+		if (!umaxset_empty(ids) && !umaxset_has(ids, tsk.id))
+			continue;
 
-		for (size_t i = 0; i < tasks->length; i++) {
-			if (tasks->items[i].id == tsk.id)
+		for (size_t i = 0; i < tasks->len; i++) {
+			if (tasks->data[i].id == tsk.id)
 				goto duplicate;
 		}
 
 		tsk.filename = xstrdup(ent->d_name);
 		tsk.title = strchr(tsk.filename, '-') + 1;
-		if (taskvec_append(tasks, tsk) == -1)
-			die("taskvec_append");
+		if (taskvec_push(tasks, tsk) == -1)
+			die("taskvec_push");
 duplicate:;
 	}
 	if (errno != 0)
@@ -174,7 +169,7 @@ duplicate:;
 }
 
 void
-outputlist(struct taskvec tasks)
+outputlist(taskvec_t tasks)
 {
 	bool tty = true;
 	int fd, fds[2];
@@ -183,7 +178,7 @@ outputlist(struct taskvec tasks)
 	FILE *pager = stdout;
 	struct task tsk;
 
-	if (tasks.length == 0)
+	if (tasks.len == 0)
 		return;
 
 	if (!isatty(STDOUT_FILENO)) {
@@ -210,17 +205,17 @@ outputlist(struct taskvec tasks)
 		die("fdopen: Pipe to pager");
 
 not_a_tty:
-	pad = uintmaxlen(tasks.items[tasks.length - 1].id);
+	pad = uintmaxlen(tasks.data[tasks.len - 1].id);
 	if (!lflag) {
-		for (size_t i = 0; i < tasks.length; i++) {
-			tsk = tasks.items[i];
+		for (size_t i = 0; i < tasks.len; i++) {
+			tsk = tasks.data[i];
 			fprintf(pager, "%*ju. %s\n",
 			       (int) pad, tsk.id, tsk.title);
 			free(tsk.filename);
 		}
 	} else {
-		for (size_t i = 0; i < tasks.length; i++) {
-			tsk = tasks.items[i];
+		for (size_t i = 0; i < tasks.len; i++) {
+			tsk = tasks.data[i];
 			if ((fd = openat(tsk.dfd, tsk.filename, O_RDONLY))
 					== -1)
 				die("openat: '%s'", tsk.filename);
@@ -235,7 +230,7 @@ not_a_tty:
 				       tsk.title, tsk.id);
 			if (printbody(pager, fd) == -1)
 				warn("printbody: '%s'", tsk.filename);
-			if (i < tasks.length - 1)
+			if (i < tasks.len - 1)
 				fputc('\n', pager);
 			free(tsk.filename);
 			close(fd);

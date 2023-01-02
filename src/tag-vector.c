@@ -4,18 +4,18 @@
 
 #include "tag-vector.h"
 
-GEVECTOR_IMPL(char *, tagvec)
+GEVECTOR_DEF_IMPL(char *, tagvec)
 
 void
-parsetags(struct tagvec *vec, char *tagstr)
+parsetags(tagvec_t *vec, char *tagstr)
 {
 	char *start, *end;
 
 	start = tagstr;
 	while ((end = strchr(start, ',')) != NULL) {
 		*end = '\0';
-		tagvec_append(vec, start);
+		tagvec_push(vec, start);
 		start = end + 1;
 	}
-	tagvec_append(vec, start);
+	tagvec_push(vec, start);
 }
