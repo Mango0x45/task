@@ -2,7 +2,7 @@
 
 #include <gevector.h>
 
-#include "tag-vector.h"
+#include "tagvec.h"
 
 GEVECTOR_DEF_IMPL(char *, tagvec)
 

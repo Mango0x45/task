@@ -3,7 +3,7 @@
 
 #include <geset.h>
 
-#include "umax-set.h"
+#include "umaxset.h"
 
 GESET_DEF_IMPL(uintmax_t, umaxset)
 
