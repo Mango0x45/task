@@ -12,14 +12,15 @@ PREFIX  = /usr/local
 DPREFIX = ${DESTDIR}${PREFIX}
 
 prog = task
-objs = src/common.o     \
-       src/tag-vector.o \
-       src/task-add.o   \
-       src/task-done.o  \
-       src/task-ls.o    \
-       src/task-tag.o   \
-       src/task.o       \
-       src/umax-set.o
+objs = src/common.o      \
+       src/tagset.o      \
+       src/task.o        \
+       src/task-add.o    \
+       src/task-done.o   \
+       src/task-ls.o     \
+       src/task-parser.o \
+       src/task-tag.o    \
+       src/umaxset.o
 
 all: ${prog}
 ${prog}: ${objs}
@@ -27,7 +28,9 @@ ${prog}: ${objs}
 
 src/common.o: src/common.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
-src/tag-vector.o: src/tag-vector.c
+src/tagset.o: src/tagset.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+src/task.o: src/task.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 src/task-add.o: src/task-add.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
@@ -35,11 +38,11 @@ src/task-done.o: src/task-done.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 src/task-ls.o: src/task-ls.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
+src/task-parser.o: src/task-parser.c
+	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 src/task-tag.o: src/task-tag.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
-src/task.o: src/task.c
-	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
-src/umax-set.o: src/umax-set.c
+src/umaxset.o: src/umaxset.c
 	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
 clean:

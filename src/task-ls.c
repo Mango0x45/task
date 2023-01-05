@@ -18,9 +18,10 @@
 #include <gevector.h>
 
 #include "common.h"
-#include "tag-vector.h"
+#include "tagset.h"
 #include "task.h"
-#include "umax-set.h"
+#include "task-parser.h"
+#include "umaxset.h"
 
 GEVECTOR_DEF(struct task, taskvec)
 
@@ -31,19 +32,18 @@ enum pipe_ends {
 	WRITE
 };
 
-static int  printbody(FILE *, int);
+static void printbody(FILE *, FILE *);
 static int  qsort_helper(const void *, const void *);
-static void queuetasks(taskvec_t *, tagvec_t *, int, umaxset_t *, int);
-static void queuetasks_helper(taskvec_t *, char *, int, int, umaxset_t *, int);
-static void outputlist(taskvec_t);
+static void queuetasks(taskvec_t *, tagset_t *, enum task_status, umaxset_t *);
+static void outputlist(taskvec_t *);
 
 void
 subcmdlist(int argc, char **argv)
 {
 	int opt;
 	umaxset_t ids = {0};
+	tagset_t tags = {0};
 	taskvec_t tasks;
-	tagvec_t tags = { .data = NULL };
 	const char *opts = "adlst:";
 	static struct option longopts[] = {
 		{"all",     no_argument,       NULL, 'a'},
@@ -70,8 +70,8 @@ subcmdlist(int argc, char **argv)
 			break;
 		case 't':
 			if (!tflag) {
-				if (tagvec_new(&tags, 0, 0) == -1)
-					die("tagvec_new");
+				if (tagset_new(&tags, 0, 0) == -1)
+					die("tagset_new");
 				tflag = true;
 			}
 			parsetags(&tags, optarg);
@@ -94,91 +94,54 @@ subcmdlist(int argc, char **argv)
 	if (taskvec_new(&tasks, (size_t) argc, 0) == -1)
 		die("taskvec_new");
 	if (aflag || !dflag)
-		queuetasks(&tasks, &tags, dfds[TODO], &ids, argc);
+		queuetasks(&tasks, &tags, TODO, &ids);
 	if (aflag ||  dflag)
-		queuetasks(&tasks, &tags, dfds[DONE], &ids, argc);
+		queuetasks(&tasks, &tags, DONE, &ids);
 
+	tagset_free(&tags);
 	umaxset_free(&ids);
-
 	qsort(tasks.data, tasks.len, sizeof(struct task), &qsort_helper);
-	outputlist(tasks);
+	outputlist(&tasks);
 	free(tasks.data);
-	free(tags.data);
 }
 
 void
-queuetasks(taskvec_t *tasks, tagvec_t *tags, int dfd, umaxset_t *ids, int idcnt)
+queuetasks(taskvec_t *tasks, tagset_t *tags, enum task_status status,
+           umaxset_t *ids)
 {
-	if (tags->data == NULL)
-		queuetasks_helper(tasks, ".", dfd, dfd, ids, idcnt);
-	else for (size_t i = 0; i < tags->len; i++)
-		queuetasks_helper(tasks, tags->data[i], dfd, dfd, ids, idcnt);
-}
-
-void
-queuetasks_helper(taskvec_t *tasks, char *dirpath, int bfd, int dfd,
-                  umaxset_t *ids, int idcnt)
-{
-	int fd;
 	DIR *dp;
+	struct task task = {0};
 	struct dirent *ent;
-	struct task tsk;
 
-	if ((fd = openat(dfd, dirpath, D_FLAGS)) == -1)
-		die("openat: '%s'", dirpath);
-	if ((dp = fdopendir(fd)) == NULL)
-		die("fdopendir");
+	if ((dp = opendir(".")) == NULL)
+		die("opendir");
 	while (errno = 0, (ent = readdir(dp)) != NULL) {
-		if (streq(ent->d_name, ".") || streq(ent->d_name, ".."))
+		if (ent->d_type == DT_DIR)
 			continue;
-		if (ent->d_type == DT_DIR) {
-			queuetasks_helper(tasks, ent->d_name, bfd, fd, ids,
-			                  idcnt);
-			continue;
-		}
-		if (sscanf(ent->d_name, "%ju-", &tsk.id) != 1) {
-			ewarnx("%s: Couldn't parse task ID", ent->d_name);
-			continue;
-		}
-
-		tsk.dfd = bfd;
-		tsk.title = strchr(ent->d_name, '-') + 1;
-
-		if (tsk.title[0] == '\0') {
-			ewarnx("%s: Task title is empty", ent->d_name);
-			continue;
-		}
-		if (!umaxset_empty(ids) && !umaxset_has(ids, tsk.id))
-			continue;
-
-		for (size_t i = 0; i < tasks->len; i++) {
-			if (tasks->data[i].id == tsk.id)
-				goto duplicate;
-		}
-
-		tsk.filename = xstrdup(ent->d_name);
-		tsk.title = strchr(tsk.filename, '-') + 1;
-		if (taskvec_push(tasks, tsk) == -1)
-			die("taskvec_push");
-duplicate:;
+		task = parsetask(ent->d_name, false);
+		if (task.status == status && (tagset_empty(tags)
+				|| tagset_intersects(tags, &task.tags))
+				&& (umaxset_empty(ids)
+				|| umaxset_has(ids, task.id)))
+			taskvec_push(tasks, task);
 	}
 	if (errno != 0)
 		die("readdir");
-
 	closedir(dp);
 }
 
 void
-outputlist(taskvec_t tasks)
+outputlist(taskvec_t *tasks)
 {
-	bool tty = true;
-	int fd, fds[2];
+	int fds[2];
 	pid_t pid;
+	char buf[21];
 	size_t pad;
-	FILE *pager = stdout;
-	struct task tsk;
+	bool tty = true;
+	FILE *fp, *pager = stdout;
+	struct task task;
 
-	if (tasks.len == 0)
+	if (tasks->len == 0)
 		return;
 
 	if (!isatty(STDOUT_FILENO)) {
@@ -205,35 +168,42 @@ outputlist(taskvec_t tasks)
 		die("fdopen: Pipe to pager");
 
 not_a_tty:
-	pad = uintmaxlen(tasks.data[tasks.len - 1].id);
+	pad = uintmaxlen(tasks->data[tasks->len - 1].id);
 	if (!lflag) {
-		for (size_t i = 0; i < tasks.len; i++) {
-			tsk = tasks.data[i];
-			fprintf(pager, "%*ju. %s\n",
-			       (int) pad, tsk.id, tsk.title);
-			free(tsk.filename);
+		for (size_t i = 0; i < tasks->len; i++) {
+			task = tasks->data[i];
+			fprintf(pager, "%*ju. %s\n", (int) pad, task.id,
+			        task.title);
+			free(task.title);
+			tagset_deep_free(&task.tags);
 		}
 	} else {
-		for (size_t i = 0; i < tasks.len; i++) {
-			tsk = tasks.data[i];
-			if ((fd = openat(tsk.dfd, tsk.filename, O_RDONLY))
-					== -1)
-				die("openat: '%s'", tsk.filename);
+		for (size_t i = 0; i < tasks->len; i++) {
+			task = tasks->data[i];
+
 			if (tty == true || sflag)
 				fprintf(pager, "\033[1mTask Title:\033[0m "
 				               "\033[4m%s\033[0m\n"
 				               "\033[1mTask ID:\033[0m    "
 				               "\033[4m%ju\033[0m\n",
-				        tsk.title, tsk.id);
+				        task.title, task.id);
 			else
 				printf("Task Title: %s\nTask ID:    %ju\n",
-				       tsk.title, tsk.id);
-			if (printbody(pager, fd) == -1)
-				warn("printbody: '%s'", tsk.filename);
-			if (i < tasks.len - 1)
+				       task.title, task.id);
+
+			sprintf(buf, "%ju", task.id);
+
+			if ((fp = fopen(buf, "r")) == NULL)
+				ewarn("fopen: '%s'", task.title);
+
+			printbody(pager, fp);
+			fclose(fp);
+
+			if (i < tasks->len - 1)
 				fputc('\n', pager);
-			free(tsk.filename);
-			close(fd);
+
+			free(task.title);
+			tagset_deep_free(&task.tags);
 		}
 	}
 
@@ -244,31 +214,23 @@ not_a_tty:
 	}
 }
 
-int
-printbody(FILE *stream, int fd)
+void
+printbody(FILE *ofp, FILE *ifp)
 {
-	bool init, wasnl;
+	/* TODO: Make line and len static to avoid extra allocations? */
+	char *line = NULL;
+	size_t len = 0;
 	ssize_t nr;
-	char buf[BUFSIZ];
 
-	init = wasnl = true;
-	while ((nr = read(fd, buf, BUFSIZ)) != -1 && nr != 0) {
-		for (ssize_t i = 0; i < nr; i++) {
-			if (init) {
-				fputc('\n', stream);
-				init = false;
-			}
-			if (buf[i] == '\n')
-				wasnl = true;
-			else if (wasnl) {
-				fputs("    ", stream);
-				wasnl = false;
-			}
-			fputc(buf[i], stream);
-		}
+	while ((nr = getline(&line, &len, ifp)) != -1) {
+		if (line[nr - 1] == '\n')
+			line[nr - 1] = '\0';
+		fprintf(ofp, "    %s\n", line);
 	}
+	if (ferror(ifp))
+		die("getline");
 
-	return nr == -1 ? -1 : 0;
+	free(line);
 }
 
 int

@@ -1,27 +1,24 @@
 #ifndef TASK_H
 #define TASK_H
 
+#include <geset.h>
+
+#include "tagset.h"
+
 #define D_FLAGS (O_RDONLY | O_DIRECTORY)
 
-#define DONEDIR "done"
-#define TODODIR "todo"
-
-enum fd_type {
+enum task_status {
 	DONE,
-	TODO,
-	/* Number of enum members */
-	FD_COUNT
+	TODO
 };
 
 struct task {
-	int dfd;
 	uintmax_t id;
-	char *filename;
-	const char *title;
+	enum task_status status;
+	tagset_t tags;
+	char *title, *body;
 };
 
-extern int rv;
-extern int dfds[FD_COUNT];
 extern const char *argv0;
 
 void subcmdadd(int, char **);

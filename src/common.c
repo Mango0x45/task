@@ -11,15 +11,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <geset.h>
-#include <gevector.h>
-
 #include "common.h"
-#include "tag-vector.h"
 #include "task.h"
-#include "umax-set.h"
-
-static void iterdir_helper(tagvec_t *, int, int, const char *);
 
 char *
 xstrdup(const char *s)
@@ -151,65 +144,4 @@ getpathmax(const char *s)
 	}
 
 	return pathmax;
-}
-
-void
-parseids(umaxset_t *set, char **raw, int cnt)
-{
-	char *p;
-	uintmax_t id;
-
-	for (int i = 0; i < cnt; i++) {
-		id = strtoumax(raw[i], &p, 10);
-		if (*raw[i] != '\0' && *p == '\0') {
-			if (umaxset_add(set, id) == -1)
-				die("umaxset_add");
-		} else
-			ewarnx("Invalid task ID: '%s'", raw[i]);
-	}
-}
-
-void
-iterdir(tagvec_t *vec, int fd)
-{
-	iterdir_helper(vec, fd, fd, ".");
-}
-
-void
-iterdir_helper(tagvec_t *vec, int bfd, int fd, const char *base)
-{
-	int nfd;
-	DIR *dp;
-	char *buf;
-	size_t len;
-	struct dirent *ent;
-
-	if ((dp = fdopendir(fd)) == NULL) {
-		ewarn("fdopendir: '%s'", base);
-		return;
-	}
-	rewinddir(dp);
-	while (errno = 0, (ent = readdir(dp)) != NULL) {
-		if (ent->d_type != DT_DIR || streq(ent->d_name, ".")
-				|| streq(ent->d_name, ".."))
-			continue;
-		if (streq(base, ".")) {
-			buf = xstrdup(ent->d_name);
-			tagvec_push(vec, buf);
-		} else {
-			len = strlen(ent->d_name) + strlen(base) + 2;
-			buf = xmalloc(len);
-			sprintf(buf, "%s/%s", base, ent->d_name);
-			tagvec_push(vec, buf);
-		}
-		if ((nfd = openat(bfd, buf, D_FLAGS)) == -1)
-			ewarn("openat: '%s'", buf);
-		else {
-			iterdir_helper(vec, bfd, nfd, buf);
-			close(nfd);
-		}
-	}
-	if (errno != 0)
-		ewarn("readdir: '%s'", base);
-	closedir(dp);
 }

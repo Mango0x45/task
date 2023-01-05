@@ -13,10 +13,9 @@
 #include "task.h"
 
 int rv = EXIT_SUCCESS;
-int dfds[FD_COUNT];
 const char *argv0;
 
-static void mkdatadirs(void);
+static void mkdirs(void);
 static void usage(void);
 
 int
@@ -26,7 +25,7 @@ main(int argc, char *argv[])
 
 	if (argc == 1)
 		usage();
-	mkdatadirs();
+	mkdirs();
 
 	argc--, argv++;
 	if (streq(argv[0], "add"))
@@ -42,15 +41,12 @@ main(int argc, char *argv[])
 		usage();
 	}
 
-	close(dfds[DONE]);
-	close(dfds[TODO]);
 	return rv;
 }
 
 void
-mkdatadirs(void)
+mkdirs(void)
 {
-	int fd;
 	bool home = false;
 	char *base, *buf;
 	size_t n;
@@ -74,26 +70,10 @@ mkdatadirs(void)
 
 	if (mkdir(buf, 0777) == -1 && errno != EEXIST)
 		die("mkdir: '%s'", buf);
-
-#ifdef __linux__
-	if ((fd = open(buf, O_PATH)) == -1)
-#else
-	if ((fd = open(buf, D_FLAGS)) == -1)
-#endif
-		die("open: '%s'", buf);
-
-	if (mkdirat(fd, DONEDIR, 0777) == -1 && errno != EEXIST)
-		die("mkdir: '%s/"DONEDIR"'", buf);
-	if (mkdirat(fd, TODODIR, 0777) == -1 && errno != EEXIST)
-		die("mkdir: '%s/"TODODIR"'", buf);
-
-	if ((dfds[DONE] = openat(fd, DONEDIR, D_FLAGS)) == -1)
-		die("openat: '%s/"DONEDIR"'", buf);
-	if ((dfds[TODO] = openat(fd, TODODIR, D_FLAGS)) == -1)
-		die("openat: '%s/"TODODIR"'", buf);
+	if (chdir(buf) == -1)
+		die("chdir: '%s'", buf);
 
 	free(buf);
-	close(fd);
 }
 
 void
