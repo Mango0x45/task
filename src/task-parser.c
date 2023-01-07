@@ -1,3 +1,5 @@
+#include <sys/stat.h>
+
 #include <ctype.h>
 #include <err.h>
 #include <stdbool.h>
@@ -18,6 +20,7 @@ parsetask(const char *filename, bool parsebody)
 	char *s, *line = NULL;
 	size_t len = 0;
 	ssize_t nr;
+	struct stat sb;
 	struct task task;
 
 	if ((fp = fopen(filename, "r")) == NULL)
@@ -51,14 +54,20 @@ parsetask(const char *filename, bool parsebody)
 				die("Task has empty tag");
 			if (tagset_add(&task.tags, xstrdup(s)) == -1)
 				die("tagset_add");
-		} else if (len == 0)
+		} else if (nr == 0)
 			break;
 	}
 	if (ferror(fp))
 		die("getline");
 
-	if (parsebody)
-		task.body = xstrdup("hello world\n");
+	if (parsebody) {
+		if (stat(filename, &sb) == -1)
+			die("stat: '%s'", filename);
+		task.body = xcalloc(sb.st_size, sizeof(char));
+		fread(task.body, sizeof(char), sb.st_size, fp);
+		if (ferror(fp))
+			die("fread: '%s'", filename);
+	}
 
 	free(line);
 	fclose(fp);
