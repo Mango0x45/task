@@ -227,6 +227,18 @@ printbody(FILE *ofp, FILE *ifp)
 	ssize_t nr;
 
 	while ((nr = getline(&line, &len, ifp)) != -1) {
+		if (nr <= 1)
+			break;
+	}
+	if (ferror(ifp))
+		die("getline");
+	if (feof(ifp)) {
+		free(line);
+		return;
+	}
+
+	fputs(line, ofp);
+	while ((nr = getline(&line, &len, ifp)) != -1) {
 		if (line[nr - 1] == '\n')
 			line[nr - 1] = '\0';
 		fprintf(ofp, "    %s\n", line);
