@@ -35,6 +35,7 @@ enum pipe_ends {
 static void printbody(FILE *, FILE *);
 static int  qsort_helper(const void *, const void *);
 static void queuetasks(taskvec_t *, tagset_t *, enum task_status, umaxset_t *);
+static bool tagmatches(tagset_t *, tagset_t *);
 static void outputlist(taskvec_t *);
 
 void
@@ -119,8 +120,8 @@ queuetasks(taskvec_t *tasks, tagset_t *tags, enum task_status status,
 		if (ent->d_type == DT_DIR)
 			continue;
 		task = parsetask(ent->d_name, false);
-		if (task.status == status && (tagset_empty(tags)
-				|| tagset_intersects(tags, &task.tags))
+		if (task.status == status
+				&& tagmatches(&task.tags, tags)
 				&& (umaxset_empty(ids)
 				|| umaxset_has(ids, task.id)))
 			taskvec_push(tasks, task);
@@ -132,6 +133,26 @@ queuetasks(taskvec_t *tasks, tagset_t *tags, enum task_status status,
 	if (errno != 0)
 		die("readdir");
 	closedir(dp);
+}
+
+bool
+tagmatches(tagset_t *tags, tagset_t *filters)
+{
+	size_t len;
+
+	if (tagset_empty(filters))
+		return true;
+
+	GESET_FOREACH(tagset, char *, tag, *tags) {
+		GESET_FOREACH(tagset, char *, filter, *filters) {
+			len = strlen(filter);
+			if (strneq(tag, filter, len) &&
+					(tag[len] == '/' || tag[len] == '\0'))
+				return true;
+		}
+	}
+
+	return false;
 }
 
 void

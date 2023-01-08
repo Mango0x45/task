@@ -5,6 +5,7 @@
 #include <geset.h>
 
 #include "common.h"
+#include "compat.h"
 #include "tagset.h"
 
 GESET_DEF_IMPL(char *, tagset)
@@ -39,14 +40,22 @@ void
 parsetags(tagset_t *set, char *tagstr)
 {
 	char *start, *end;
+	bool done = false;
 
 	start = tagstr;
-	while ((end = strchr(start, ',')) != NULL) {
-		*end = '\0';
+	while ((end = strchrnul(start, ','))) {
+		if (*end == '\0')
+			done = true;
+		else
+			*end = '\0';
+
+		for (int i = -1; end + i >= start && end[i] == '/'; i--)
+			end[i] = '\0';
 		if (tagset_add(set, start) == -1)
 			die("tagset_add");
 		start = end + 1;
+
+		if (done)
+			break;
 	}
-	if (tagset_add(set, start) == -1)
-		die("tagset_add");
 }

@@ -12,7 +12,8 @@
 #define ewarn(...)  do { rv = EXIT_FAILURE; warn (__VA_ARGS__); } while (0)
 #define ewarnx(...) do { rv = EXIT_FAILURE; warnx(__VA_ARGS__); } while (0)
 
-#define streq(x, y)         (strcmp(x, y) == 0)
+#define streq(x, y)         (strcmp(x, y)         == 0)
+#define strneq(x, y, n)     (strncmp(x, y, n)     == 0)
 #define strncaseeq(x, y, n) (strncasecmp(x, y, n) == 0)
 
 extern int rv;

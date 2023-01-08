@@ -13,6 +13,7 @@ DPREFIX = ${DESTDIR}${PREFIX}
 
 prog = task
 objs = src/common.o      \
+       src/compat.o      \
        src/tagset.o      \
        src/task.o        \
        src/task-add.o    \
