@@ -124,6 +124,10 @@ queuetasks(taskvec_t *tasks, tagset_t *tags, enum task_status status,
 				&& (umaxset_empty(ids)
 				|| umaxset_has(ids, task.id)))
 			taskvec_push(tasks, task);
+		else {
+			free(task.title);
+			tagset_deep_free(&task.tags);
+		}
 	}
 	if (errno != 0)
 		die("readdir");
