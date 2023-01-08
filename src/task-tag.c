@@ -16,6 +16,7 @@
 #include "common.h"
 #include "tagset.h"
 #include "task.h"
+#include "task-parser.h"
 #include "umaxset.h"
 
 bool rflag;
@@ -73,6 +74,80 @@ subcmdtag(int argc, char **argv)
 void
 listtags(void)
 {
+	size_t i;
+	DIR *dp;
+	FILE *fp;
+	tagset_t set;
+	bool cache = true;
+	char *line = NULL;
+	char **tags;
+	size_t len = 0;
+	ssize_t nr;
+	struct task task;
+	struct dirent *ent;
+
+	if (tagset_new(&set, 0, 0) == -1)
+		die("tagset_new");
+
+	if ((fp = fopen("tags", "r+")) == NULL && errno != ENOENT)
+		die("fopen: 'tags'");
+	if (errno == ENOENT) {
+		cache = false;
+		if ((fp = fopen("tags", "w")) == NULL)
+			die("fopen: 'tags'");
+	}
+
+	if (cache) {
+		while ((nr = getline(&line, &len, fp)) != -1) {
+			if (line[nr - 1] == '\n')
+				line[nr - 1] = '\0';
+			if (tagset_add(&set, xstrdup(line)) == -1)
+				die("tagset_add");
+		}
+		if (ferror(fp))
+			die("getline: 'tags'");
+
+		free(line);
+	} else {
+		if ((dp = opendir(".")) == NULL)
+			die("opendir");
+		while (errno = 0, (ent = readdir(dp)) != NULL) {
+			if (ent->d_type == DT_DIR || streq(ent->d_name, "tags"))
+				continue;
+			task = parsetask(ent->d_name, false);
+			GESET_FOREACH(tagset, char *, tag, task.tags) {
+				if (tagset_has(&set, tag))
+					free(tag);
+				else if (tagset_add(&set, tag) == -1)
+					die("tagset_add");
+			}
+			free(task.title);
+			tagset_free(&task.tags);
+		}
+		if (errno != 0)
+			die("readdir");
+		closedir(dp);
+	}
+
+	i = 0;
+	tags = xmalloc(sizeof(char *) * tagset_size(&set));
+	GESET_FOREACH(tagset, char *, tag, set)
+		tags[i++] = tag;
+
+	qsort(tags, i, sizeof(char *), voidcoll);
+	rewind(fp);
+
+	for (size_t j = 0; j < i; j++) {
+		fprintf(fp, "%s\n", tags[j]);
+		puts(tags[j]);
+	}
+	if (ftruncate(fileno(fp), ftell(fp)) == -1)
+		die("ftruncate: 'tags'");
+
+	free(tags);
+
+	tagset_deep_free(&set);
+	fclose(fp);
 }
 
 void

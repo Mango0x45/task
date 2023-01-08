@@ -117,7 +117,7 @@ queuetasks(taskvec_t *tasks, tagset_t *tags, enum task_status status,
 	if ((dp = opendir(".")) == NULL)
 		die("opendir");
 	while (errno = 0, (ent = readdir(dp)) != NULL) {
-		if (ent->d_type == DT_DIR)
+		if (ent->d_type == DT_DIR || streq(ent->d_name, "tags"))
 			continue;
 		task = parsetask(ent->d_name, false);
 		if (task.status == status
