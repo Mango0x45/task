@@ -101,7 +101,7 @@ subcmdlist(int argc, char **argv)
 
 	tagset_free(&tags);
 	umaxset_free(&ids);
-	qsort(tasks.data, tasks.len, sizeof(struct task), &qsort_helper);
+	qsort(tasks.data, tasks.len, sizeof(struct task), qsort_helper);
 	outputlist(&tasks);
 	free(tasks.data);
 }
