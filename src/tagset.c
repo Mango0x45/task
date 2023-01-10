@@ -5,7 +5,6 @@
 #include <geset.h>
 
 #include "common.h"
-#include "compat.h"
 #include "tagset.h"
 
 GESET_DEF_IMPL(char *, tagset)

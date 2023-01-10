@@ -14,6 +14,18 @@
 #include "common.h"
 #include "task.h"
 
+#ifndef __GNUC__
+char *
+strchrnul(const char *s, int c)
+{
+	for (; *s; s++) {
+		if (*s == c)
+			break;
+	}
+	return (char *) s;
+}
+#endif
+
 char *
 xstrdup(const char *s)
 {

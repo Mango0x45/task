@@ -18,6 +18,10 @@
 
 extern int rv;
 
+#ifndef __GNUC__
+char   *strchrnul(const char *, int);
+#endif
+
 char   *xstrdup(const char *);
 void   *xmalloc(size_t);
 void   *xrealloc(void *, size_t);
